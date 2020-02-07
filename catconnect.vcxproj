@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{B489E3FE-6F86-4306-BFFF-F27447834DB0}</ProjectGuid>
+    <RootNamespace>catconnect</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);./public/steam;./public/boost;./public/tf2sdk/mp/src/public;./public/tf2sdk/mp/src/public/tier0;./public/tf2sdk/mp/src/public/tier1;./public/tf2sdk/mp/src/public/engine;./public/tf2sdk/mp/src/public/game/server;./public/tf2sdk/mp/src/public/game/client;./public/tf2sdk/mp/src/common;./public/tf2sdk/mp/src/public/mathlib;./public/tf2sdk/mp/src/game/shared;./public/tf2sdk/mp/src/game/client;./;./utils;./core</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;./lib;./public/tf2sdk/mp/src/lib;./public/tf2sdk/mp/src/lib/public</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);./public/tf2sdk/public;./public/tf2sdk/public/tier0;./public/tf2sdk/public/tier1;./public/tf2sdk/public/engine;./public/tf2sdk/public/game/server;./public/tf2sdk/public/game/client;./public/tf2sdk/common</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;./public/tf2sdk/lib;./public/tf2sdk/lib/public;</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <GenerateManifest>false</GenerateManifest>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);./public/steam;./public/boost;./public/tf2sdk/mp/src/public;./public/tf2sdk/mp/src/public/tier0;./public/tf2sdk/mp/src/public/tier1;./public/tf2sdk/mp/src/public/engine;./public/tf2sdk/mp/src/public/game/server;./public/tf2sdk/mp/src/public/game/client;./public/tf2sdk/mp/src/common;./public/tf2sdk/mp/src/public/mathlib;./public/tf2sdk/mp/src/game/shared;./public/tf2sdk/mp/src/game/client;./;./utils;./core</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;./lib;./public/tf2sdk/mp/src/lib;./public/tf2sdk/mp/src/lib/public</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);./public/tf2sdk/public;./public/tf2sdk/public/tier0;./public/tf2sdk/public/tier1;./public/tf2sdk/public/engine;./public/tf2sdk/public/game/server;./public/tf2sdk/public/game/client;./public/tf2sdk/common</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;./public/tf2sdk/lib;./public/tf2sdk/lib/public;</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;LAZY_IMPORTER_CACHE_OPERATOR_PARENS;_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <ExpandAttributedSource>false</ExpandAttributedSource>
+      <AssemblerOutput>NoListing</AssemblerOutput>
+      <UseUnicodeForAssemblerListing>false</UseUnicodeForAssemblerListing>
+      <EnableModules>false</EnableModules>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
+      <AssemblyDebug>true</AssemblyDebug>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;mathlib.lib;tier0.lib;tier1_recompiled.lib;vstdlib.lib;legacy_stdio_definitions.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;mathlib.lib;tier0.lib;tier1.lib;vstdlib.lib;legacy_stdio_definitions.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>
+      </SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;LAZY_IMPORTER_CACHE_OPERATOR_PARENS;_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <StringPooling>true</StringPooling>
+      <ExceptionHandling>false</ExceptionHandling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <ProgramDataBaseFileName />
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
+      <EnableModules>false</EnableModules>
+      <Optimization>MaxSpeed</Optimization>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <ManifestFile />
+      <EnableUAC>false</EnableUAC>
+      <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
+      <AssemblyDebug>false</AssemblyDebug>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;mathlib.lib;tier0.lib;tier1_recompiled.lib;vstdlib.lib;legacy_stdio_definitions.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
+      <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <SupportNobindOfDelayLoadedDLL>false</SupportNobindOfDelayLoadedDLL>
+      <ImportLibrary />
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <StringPooling>true</StringPooling>
+      <ExceptionHandling>false</ExceptionHandling>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <ProgramDatabaseFile />
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;mathlib.lib;tier0.lib;tier1.lib;vstdlib.lib;legacy_stdio_definitions.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="catconnect.cpp" />
+    <ClCompile Include="catfiles.cpp" />
+    <ClCompile Include="core\cmdwrapper.cpp" />
+    <ClCompile Include="core\menu\controls.cpp" />
+    <ClCompile Include="core\menu\menu.cpp" />
+    <ClCompile Include="core\menu\styles.cpp" />
+    <ClCompile Include="core\settings\settings.cpp" />
+    <ClCompile Include="core\visual\drawer.cpp" />
+    <ClCompile Include="core\visual\glow.cpp" />
+    <ClCompile Include="globals.cpp" />
+    <ClCompile Include="hooksman.cpp" />
+    <ClCompile Include="interfaces.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="public\MaterialSystemUtil.cpp" />
+    <ClCompile Include="utils\logger.cpp" />
+    <ClCompile Include="utils\netvars.h" />
+    <ClCompile Include="utils\printers.cpp" />
+    <ClCompile Include="utils\timers.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="catconnect.h" />
+    <ClInclude Include="catfiles.h" />
+    <ClInclude Include="core\cmdwrapper.h" />
+    <ClInclude Include="core\menu\basecontrol.h" />
+    <ClInclude Include="core\menu\checkbox.h" />
+    <ClInclude Include="core\menu\drawpanel.h" />
+    <ClInclude Include="core\menu\groupbox.h" />
+    <ClInclude Include="core\menu\listbox.h" />
+    <ClInclude Include="core\menu\menu.h" />
+    <ClInclude Include="core\menu\slider.h" />
+    <ClInclude Include="core\menu\space.h" />
+    <ClInclude Include="core\menu\styles.h" />
+    <ClInclude Include="core\menu\tab.h" />
+    <ClInclude Include="core\menu\tabgroup.h" />
+    <ClInclude Include="core\settings\settings.h" />
+    <ClInclude Include="core\visual\drawer.h" />
+    <ClInclude Include="core\visual\glow.h" />
+    <ClInclude Include="icatconnect.h" />
+    <ClInclude Include="globals.h" />
+    <ClInclude Include="hooksman.h" />
+    <ClInclude Include="interfaces.h" />
+    <ClInclude Include="public\bitbuffix.h" />
+    <ClInclude Include="public\globalvars_base.h" />
+    <ClInclude Include="public\imaterialsystemfixed.h" />
+    <ClInclude Include="public\isurfacefixed.h" />
+    <ClInclude Include="public\steam\isteamapplist.h" />
+    <ClInclude Include="public\steam\isteamapps.h" />
+    <ClInclude Include="public\steam\isteamclient.h" />
+    <ClInclude Include="public\steam\isteamcontroller.h" />
+    <ClInclude Include="public\steam\isteamfriends.h" />
+    <ClInclude Include="public\steam\isteamgameserver.h" />
+    <ClInclude Include="public\steam\isteamgameserverstats.h" />
+    <ClInclude Include="public\steam\isteamhtmlsurface.h" />
+    <ClInclude Include="public\steam\isteamhttp.h" />
+    <ClInclude Include="public\steam\isteammatchmaking.h" />
+    <ClInclude Include="public\steam\isteammusic.h" />
+    <ClInclude Include="public\steam\isteammusicremote.h" />
+    <ClInclude Include="public\steam\isteamnetworking.h" />
+    <ClInclude Include="public\steam\isteamremotestorage.h" />
+    <ClInclude Include="public\steam\isteamscreenshots.h" />
+    <ClInclude Include="public\steam\isteamugc.h" />
+    <ClInclude Include="public\steam\isteamunifiedmessages.h" />
+    <ClInclude Include="public\steam\isteamuser.h" />
+    <ClInclude Include="public\steam\isteamuserstats.h" />
+    <ClInclude Include="public\steam\isteamutils.h" />
+    <ClInclude Include="public\steam\matchmakingtypes.h" />
+    <ClInclude Include="public\steam\steamclientpublic.h" />
+    <ClInclude Include="public\steam\SteamCommon.h" />
+    <ClInclude Include="public\steam\steamhttpenums.h" />
+    <ClInclude Include="public\steam\steamtypes.h" />
+    <ClInclude Include="public\steam\steamuniverse.h" />
+    <ClInclude Include="public\steam\steam_api.h" />
+    <ClInclude Include="public\steam\steam_gameserver.h" />
+    <ClInclude Include="public\steam\userid.h" />
+    <ClInclude Include="utils\autolock.h" />
+    <ClInclude Include="utils\cbasecombatweapon.h" />
+    <ClInclude Include="utils\cbaseentity.h" />
+    <ClInclude Include="utils\ctfpartyclient.h" />
+    <ClInclude Include="utils\defs.h" />
+    <ClInclude Include="utils\e8call.h" />
+    <ClInclude Include="utils\hud.h" />
+    <ClInclude Include="utils\lazy.h" />
+    <ClInclude Include="utils\logger.h" />
+    <ClInclude Include="utils\printers.h" />
+    <ClInclude Include="utils\sigscan.h" />
+    <ClInclude Include="utils\timers.h" />
+    <ClInclude Include="utils\usermessages.h" />
+    <ClInclude Include="utils\vmt.h" />
+    <ClInclude Include="utils\xorstr.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,329 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header\global">
+      <UniqueIdentifier>{844f50ed-8e23-429e-a011-3f679ac5b3ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\global\sdk">
+      <UniqueIdentifier>{ffbd0694-0343-448a-92e6-5225738ee22e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\utils">
+      <UniqueIdentifier>{f1afe7bc-ce33-4576-a4b7-fd4839d9b5e0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\utils\crypt">
+      <UniqueIdentifier>{5effdbb5-6d5f-4a86-821f-9c63bd6550b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\global\sdk\steam">
+      <UniqueIdentifier>{ff71c6bd-86d3-4826-bca5-5cb3252ec8b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\utils">
+      <UniqueIdentifier>{9e964242-f56a-4175-af77-9b6012de5447}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\utils\reclass">
+      <UniqueIdentifier>{b37dbc7b-9acc-4ceb-ad47-43b638be05d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\core">
+      <UniqueIdentifier>{d0fc3946-53fe-4bf6-bb3a-5ee98ec41bdf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\core\settings">
+      <UniqueIdentifier>{71c7d12c-d335-46cc-abbd-5a7ef5f4bdd5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\core">
+      <UniqueIdentifier>{647296a6-ebb7-4726-9f6a-86bcc70e24d1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\core\settings">
+      <UniqueIdentifier>{53ca3e6d-92bd-4140-a16c-7707cb82efe0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\core\menu">
+      <UniqueIdentifier>{8118fb11-4805-4f9e-93c1-32bb2a61f408}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\core\menu">
+      <UniqueIdentifier>{c5b5ea9d-1b04-4485-a128-39706c559eb0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\core\visual">
+      <UniqueIdentifier>{c4c5275d-0331-412b-b423-b4d4f2bc1a42}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\core\visual">
+      <UniqueIdentifier>{b2fef862-679a-40bf-a745-3f59ac09c1ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header\utils\help">
+      <UniqueIdentifier>{310a9ad1-1ccc-4d95-9a47-65f4943d2111}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\sdk">
+      <UniqueIdentifier>{a5ceae0c-6fe7-4031-adde-c1c93898cf6f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="hooksman.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="interfaces.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="globals.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="catconnect.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\timers.cpp">
+      <Filter>Source\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="catfiles.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\printers.cpp">
+      <Filter>Source\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\netvars.h">
+      <Filter>Header\utils\help</Filter>
+    </ClCompile>
+    <ClCompile Include="core\settings\settings.cpp">
+      <Filter>Source\core\settings</Filter>
+    </ClCompile>
+    <ClCompile Include="core\visual\drawer.cpp">
+      <Filter>Source\core\visual</Filter>
+    </ClCompile>
+    <ClCompile Include="core\menu\controls.cpp">
+      <Filter>Source\core\menu</Filter>
+    </ClCompile>
+    <ClCompile Include="core\menu\styles.cpp">
+      <Filter>Source\core\menu</Filter>
+    </ClCompile>
+    <ClCompile Include="core\menu\menu.cpp">
+      <Filter>Source\core\menu</Filter>
+    </ClCompile>
+    <ClCompile Include="core\visual\glow.cpp">
+      <Filter>Source\core\visual</Filter>
+    </ClCompile>
+    <ClCompile Include="public\MaterialSystemUtil.cpp">
+      <Filter>Source\sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\logger.cpp">
+      <Filter>Source\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="core\cmdwrapper.cpp">
+      <Filter>Source\core</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="public\globalvars_base.h">
+      <Filter>Header\global\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\defs.h">
+      <Filter>Header\global</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\xorstr.h">
+      <Filter>Header\utils\crypt</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\lazy.h">
+      <Filter>Header\utils\crypt</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\vmt.h">
+      <Filter>Header\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\sigscan.h">
+      <Filter>Header\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="hooksman.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="interfaces.h">
+      <Filter>Header\global</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\timers.h">
+      <Filter>Header\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="globals.h">
+      <Filter>Header\global</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteammusic.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteammusicremote.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamnetworking.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamremotestorage.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamscreenshots.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamugc.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamunifiedmessages.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamuser.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamuserstats.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamutils.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\matchmakingtypes.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\steam_api.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\steam_gameserver.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\steamclientpublic.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\SteamCommon.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\steamhttpenums.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\steamtypes.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\steamuniverse.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\userid.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamapplist.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamapps.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamclient.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamcontroller.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamfriends.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamgameserver.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamgameserverstats.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamhtmlsurface.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteamhttp.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="public\steam\isteammatchmaking.h">
+      <Filter>Header\global\sdk\steam</Filter>
+    </ClInclude>
+    <ClInclude Include="catconnect.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\e8call.h">
+      <Filter>Header\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="catfiles.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\printers.h">
+      <Filter>Header\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\ctfpartyclient.h">
+      <Filter>Header\utils\reclass</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\hud.h">
+      <Filter>Header\utils\reclass</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\cbaseentity.h">
+      <Filter>Header\utils\reclass</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\usermessages.h">
+      <Filter>Header\utils\reclass</Filter>
+    </ClInclude>
+    <ClInclude Include="core\settings\settings.h">
+      <Filter>Header\core\settings</Filter>
+    </ClInclude>
+    <ClInclude Include="core\visual\drawer.h">
+      <Filter>Header\core\visual</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\basecontrol.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\tabgroup.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\tab.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\space.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\groupbox.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\checkbox.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\drawpanel.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\styles.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\menu.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\visual\glow.h">
+      <Filter>Header\core\visual</Filter>
+    </ClInclude>
+    <ClInclude Include="public\imaterialsystemfixed.h">
+      <Filter>Header\global\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\cbasecombatweapon.h">
+      <Filter>Header\utils\reclass</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\slider.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="core\menu\listbox.h">
+      <Filter>Header\core\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\logger.h">
+      <Filter>Header\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\autolock.h">
+      <Filter>Header\utils\help</Filter>
+    </ClInclude>
+    <ClInclude Include="public\isurfacefixed.h">
+      <Filter>Header\global\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="public\bitbuffix.h">
+      <Filter>Header\global\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="icatconnect.h">
+      <Filter>Header</Filter>
+    </ClInclude>
+    <ClInclude Include="core\cmdwrapper.h">
+      <Filter>Header\core</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

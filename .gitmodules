@@ -1,0 +1,6 @@
+[submodule "public/boost"]
+	path = public/boost
+	url = https://github.com/steinwurf/boost
+[submodule "public/tf2sdk"]
+	path = public/tf2sdk
+	url = https://github.com/ValveSoftware/source-sdk-2013
