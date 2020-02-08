@@ -4,7 +4,7 @@ CatConnect is a tool made for communicate with catbots and make them ignore you 
 
 ## How to compile
 
-To build this you need use Visual Studio 2019 or later. Simply clone it to your local machine and compile it for x86 architecture. If you are getting this error: "...\catconnect\public\tf2sdk\mp\src\public\tier0\memalloc.h(385,11): fatal error C1083: Cannot open include file: typeinfo.h: No such file or directory" while building in debug mode then simply replace #include <typeinfo.h> to #include <typeinfo>
+To build this you need use Visual Studio 2019 or later. Simply clone it to your local machine and compile it for x86 architecture. If you are getting this error: ```...\catconnect\public\tf2sdk\mp\src\public\tier0\memalloc.h(385,11): fatal error C1083: Cannot open include file: typeinfo.h: No such file or directory``` while building in debug mode then simply replace `#include <typeinfo.h>` to `#include <typeinfo>`
 
 ## Credits
 
