@@ -471,7 +471,7 @@ void CCatConnect::SendCatMessage(int iMessage)
 
 uint8_t CCatConnect::IsCat(int iIndex)
 {
-	if (ms_mIsCat.find(iIndex) == ms_mIsCat.end()) return false;
+	if (ms_mIsCat.find(iIndex) == ms_mIsCat.end()) return 0;
 	return ms_mIsCat[iIndex];
 }
 
