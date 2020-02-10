@@ -219,22 +219,84 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 
 	pRetireExpiredDeathNotices(pRealThis);
 
-	struct DeathNoticeItemFixed : public DeathNoticeItem { int iDummy; };
+	struct DeathNoticeItemFixed : public DeathNoticeItem { void * pDummy; };
 	CUtlVector<DeathNoticeItemFixed> * m_vDeathNotices = (CUtlVector<DeathNoticeItemFixed> *)((char *)pRealThis + 448);
+
+	//In fact there must be no clients with totally same name on the server! This is actually illegal and if they have same name then it's one of 2 cases:
+	//1. There an invisible character in name
+	//2. There (n) prefix before name
+	auto FindClientUserIDByName = [](const char* pName) -> int
+	{
+		for (int i = 1; i <= NSInterfaces::g_pEngineClient->GetMaxClients(); i++)
+		{
+			player_info_t sInfo;
+			if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(i, &sInfo))
+				continue;
+
+			if (!strcmp(sInfo.name, pName))
+				return sInfo.userID;
+		}
+
+		return -1;
+	};
 
 	for (int i = 0, iCount = m_vDeathNotices->Count(); i < iCount; i++)
 	{
-		DeathNoticeItemFixed &sMsg = m_vDeathNotices->Element(i);
+		DeathNoticeItemFixed sMsg = m_vDeathNotices->Element(i);
+
+		//when client is dominated / etc. his id will be -1: https://i.imgur.com/s7fTuCR.png so we need restore it from prev message then
+		//the same shit for pick up / capture intels, points, etc. No info actually provided so we need to listen for events (or hook CTFHudDeathNotice::OnGameEvent) or find client by name (why not?)
+		//in the second case here is a problem, what if there were many ppl? Then sMsg.Killer.szName will look like: name1 + name2 etc.
+		//in this case we don't care
+
+		if (sMsg.iKillerID == -1 && sMsg.iVictimID == -1 && 
+			sMsg.iconDeath != nullptr && !strcmp(xorstr_("leaderboard_dominated"), sMsg.iconDeath->szShortName))
+		{
+			if (i) sMsg = m_vDeathNotices->Element(i - 1);
+		}
+		/*
+		else if (IsPaintIgnored(sMsg.iconDeath->szShortName))
+		{
+			//TODO: Ignore points capture, payload points capture, points block, robot kills, pass time (steal, score, get), bumper car, necrosmash
+		}
+		*/
+		else if (sMsg.iKillerID == -1 || sMsg.iVictimID == -1)
+		{
+			if (sMsg.Killer.szName[0] && sMsg.Killer.iTeam > 0)
+			{
+				int iTriedKiller = FindClientUserIDByName(sMsg.Killer.szName);
+				if (iTriedKiller != -1)
+					sMsg.iKillerID = iTriedKiller;
+			}
+
+			if (sMsg.Victim.szName[0] && sMsg.Victim.iTeam > 0)
+			{
+				int iTriedVictim = FindClientUserIDByName(sMsg.Victim.szName);
+				if (iTriedVictim != -1)
+					sMsg.iVictimID = iTriedVictim;
+			}
+
+			//once we got this info save it
+			DeathNoticeItemFixed & sMsgTmp = m_vDeathNotices->Element(i);
+			sMsgTmp.iKillerID = sMsg.iKillerID;
+			sMsgTmp.iVictimID = sMsg.iVictimID;
+		}
+
 		if (sMsg.Killer.szName[0])
 		{
 			int iKillerClient = NSInterfaces::g_pEngineClient->GetPlayerForUserID(sMsg.iKillerID);
 			ms_vColors.push_back(ShouldChangeColor(iKillerClient) ? GetClientColor(iKillerClient) : Color(0, 0, 0, 0));
 		}
+		else
+			ms_vColors.push_back(Color(0, 0, 0, 0));
+
 		if (sMsg.Victim.szName[0])
 		{
 			int iVictimClient = NSInterfaces::g_pEngineClient->GetPlayerForUserID(sMsg.iVictimID);
 			ms_vColors.push_back(ShouldChangeColor(iVictimClient) ? GetClientColor(iVictimClient) : Color(0, 0, 0, 0));
 		}
+		else
+			ms_vColors.push_back(Color(0, 0, 0, 0));
 	}
 }
 
