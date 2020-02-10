@@ -242,25 +242,14 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 
 	for (int i = 0, iCount = m_vDeathNotices->Count(); i < iCount; i++)
 	{
-		DeathNoticeItemFixed sMsg = m_vDeathNotices->Element(i);
+		DeathNoticeItemFixed & sMsg = m_vDeathNotices->Element(i);
 
 		//when client is dominated / etc. his id will be -1: https://i.imgur.com/s7fTuCR.png so we need restore it from prev message then
 		//the same shit for pick up / capture intels, points, etc. No info actually provided so we need to listen for events (or hook CTFHudDeathNotice::OnGameEvent) or find client by name (why not?)
 		//in the second case here is a problem, what if there were many ppl? Then sMsg.Killer.szName will look like: name1 + name2 etc.
 		//in this case we don't care
 
-		if (sMsg.iKillerID == -1 && sMsg.iVictimID == -1 && 
-			sMsg.iconDeath != nullptr && !strcmp(xorstr_("leaderboard_dominated"), sMsg.iconDeath->szShortName))
-		{
-			if (i) sMsg = m_vDeathNotices->Element(i - 1);
-		}
-		/*
-		else if (IsPaintIgnored(sMsg.iconDeath->szShortName))
-		{
-			//TODO: Ignore points capture, payload points capture, points block, robot kills, pass time (steal, score, get), bumper car, necrosmash
-		}
-		*/
-		else if (sMsg.iKillerID == -1 || sMsg.iVictimID == -1)
+		if (sMsg.iKillerID == -1 || sMsg.iVictimID == -1)
 		{
 			if (sMsg.Killer.szName[0] && sMsg.Killer.iTeam > 0)
 			{
@@ -275,12 +264,13 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 				if (iTriedVictim != -1)
 					sMsg.iVictimID = iTriedVictim;
 			}
-
-			//once we got this info save it
-			DeathNoticeItemFixed & sMsgTmp = m_vDeathNotices->Element(i);
-			sMsgTmp.iKillerID = sMsg.iKillerID;
-			sMsgTmp.iVictimID = sMsg.iVictimID;
 		}
+		/*
+		else if (IsPaintIgnored(sMsg.iconDeath->szShortName))
+		{
+			//TODO: Ignore points capture, payload points capture, points block, robot kills, pass time (steal, score, get), bumper car, necrosmash
+		}
+		*/
 
 		if (sMsg.Killer.szName[0])
 		{
