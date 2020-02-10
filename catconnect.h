@@ -2,12 +2,16 @@
 #define _CATCONNECT_INC_
 
 #include <map>
+#include <vector>
 #include <string>
 #include <stdint.h>
 #include "defs.h"
 #include "igameevents.h"
 #include "timers.h"
 #include "icatconnect.h"
+#include "Color.h"
+
+#pragma warning (disable : 4594) //5000 iq compiler crash lmao, disable this shit
 
 class CUserCmd;
 
@@ -25,6 +29,8 @@ public:
 	static bool OnClientCommand(const char * pCmdLine);
 	static void FASTERCALL CreateMove(float flInputSample, CUserCmd * pCmd);
 	static ECatState FASTERCALL GetClientState(int iClient);
+	static inline Color GetDeathNoticeColorFromStack() { if (!ms_vColors.size()) return Color(0, 0, 0, 0); Color cRet = ms_vColors[0]; ms_vColors.erase(ms_vColors.begin()); return cRet; }
+	static void FASTERCALL OnDeathNoticePaintPre(void * pThis);
 
 private:
 	class CAchievementListener : public IGameEventListener2
@@ -54,6 +60,9 @@ private:
 	static void FASTERCALL SendCatMessage(int iMessage);
 	static uint8_t FASTERCALL IsCat(int iIndex);
 	static bool FASTERCALL InSameParty(int iIndex);
+	static inline Color GetClientColor(int iClient) { return GetStateColor(GetClientState(iClient)); }
+	static Color FASTERCALL GetStateColor(ECatState);
+	static bool FASTERCALL ShouldChangeColor(int iClient);
 
 	static void LoadSavedCats();
 	static void SaveCats();
@@ -65,6 +74,7 @@ private:
 	static CVoteListener ms_GameEventVoteCastListener;
 	static bool ms_bJustJoined;
 	static std::map<uint32_t, uint8_t> ms_mIsCat;
+	static std::vector<Color> ms_vColors;
 };
 
 class CCatConnectExpose : public ICatConnect

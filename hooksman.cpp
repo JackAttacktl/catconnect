@@ -11,7 +11,7 @@
 #include "inputsystem/iinputsystem.h"
 #include "catconnect.h"
 #include "printers.h"
-#include "hud.h"
+#include "utils/hud.h"
 #include "usermessages.h"
 #include "menu/menu.h"
 #include "visual/drawer.h"
@@ -29,12 +29,15 @@
 
 #define OFFSET_PANELUPDATE 4
 
+#define OFFSET_DEATHNOTICE_PAINT 129 //complete offset 152 (129 for vgui::Panel), linux offset 19
+#define OFFSET_DEATHNOTICE_GETCOLOR 16 //linux offset 22
+
 CHooksMan::~CHooksMan()
 {
 	if (!ms_bHooksInited) //this must be called only once
 		return;
 	//Destroy all hooks here
-	for (auto pTable : m_mHookedVtables) pTable.second->DestroyNoRestore();
+	for (auto pTable : m_mHookedVtables) delete pTable.second;
 	ms_bHooksInited = false;
 }
 
@@ -76,13 +79,19 @@ void CHooksMan::InitHooks()
 	m_mHookedVtables[VMT_PANEL] = pTable;
 	if (!!NSInterfaces::g_pViewPortInterface)
 		InitViewportHooks();
-
-	//void * pHudChat = NSInterfaces::g_pHud->FindElement(xorstr_("CHudChat"));
-
-	//pTable = new NSUtils::CVirtualMemberTableMan(pHudChat);
-	//pTable->HookFunction(&CHooksMan::OnChatPrintf, OFFSET_CHATPRINTF);
-	//m_mHookedVtables[VMT_HUDCHAT] = pTable;
 	
+	void * pHudDeathNotice = NSInterfaces::g_pHud->FindElement(xorstr_("CTFHudDeathNotice"));
+
+	pTable = new NSUtils::CVirtualMemberTableMan(pHudDeathNotice);
+	pTable->HookFunction(&CHooksMan::OnDeathNoticeGetTeamColor, OFFSET_DEATHNOTICE_GETCOLOR);
+	m_mHookedVtables[VMT_DEATHNOTICE] = pTable;
+
+	void * pCastedToPanel = NSUtils::CVirtualMemberTableMan::DoDynamicCast((void ***)pHudDeathNotice, xorstr_("vgui::Panel"));
+
+	pTable = new NSUtils::CVirtualMemberTableMan(pCastedToPanel);
+	pTable->HookFunction(&CHooksMan::OnDeathNoticePaint, OFFSET_DEATHNOTICE_PAINT);
+	m_mHookedVtables[VMT_DEATHNOTICE_PANEL] = pTable;
+
 	ms_bHooksInited = true;
 }
 
@@ -226,28 +235,6 @@ void CHooksMan::PaintTraverse(IPanel * pThis, void * pDumbArg, vgui::VPANEL iVGU
 	}
 }
 
-/*void CHooksMan::OnChatPrintf(CHudBaseChat * pThis, int iClient, int iFilter, const char * pFormat, ...)
-{
-	//In proper way we need to hook these usermessages (Using DispathUserMessage):
-	//https://github.com/ValveSoftware/source-sdk-2013/blob/master/mp/src/game/client/hud_chat.cpp#L36-L38
-	//or handler functions, but I'm lazy so I'll hook their shared function lmao
-
-	static auto pOriginalFunc = m_mHookedVtables[VMT_HUDCHAT]->GetOriginalFunction<decltype(&CHooksMan::OnChatPrintf)>(OFFSET_CHATPRINTF);
-
-	char cMessage[1024];
-	
-	va_list vaP;
-	va_start(vaP, pFormat);
-	size_t len = vsnprintf(cMessage, sizeof(cMessage), pFormat, vaP);
-	va_end(vaP);
-
-	std::string sNewMessage = CCatConnect::OnChatMessage(iClient, iFilter, cMessage);
-
-	memset(cMessage, 0, sizeof(cMessage));
-
-	pOriginalFunc(pThis, iClient, iFilter, xorstr_("%s"), sNewMessage.c_str());
-}*/
-
 bool CHooksMan::DispatchUserMessage(IBaseClientDLL * pThis, void * pDumbArg, int iMessageID, old_bf_read * pBFMessage)
 {
 	static auto pOriginalFunc = (decltype(&CHooksMan::DispatchUserMessage))VMTGetOriginalFunctionAutoUnknown(m_mHookedVtables[VMT_CLIENT], void, IBaseClientDLL, DispatchUserMessage, VMT_NOATTRIBS);
@@ -349,6 +336,28 @@ void CHooksMan::ExecuteClientCmd(IVEngineClient * pThis, void * pDummyArg, const
 		pOriginalFunc(pThis, pDummyArg, pCmd);
 }
 
+void CHooksMan::OnDeathNoticePaint(void * pThis, void * pDumbArg)
+{
+	auto pOriginalFunc = m_mHookedVtables[VMT_DEATHNOTICE_PANEL]->GetOriginalFunction<decltype(&CHooksMan::OnDeathNoticePaint)>(OFFSET_DEATHNOTICE_PAINT);
+	CCatConnect::OnDeathNoticePaintPre(pThis);
+	return pOriginalFunc(pThis, pDumbArg);
+}
+
+Color * CHooksMan::OnDeathNoticeGetTeamColor(void * pThis, void * pDumbArg, Color * pClr, int iTeam, bool bLocalPlayer) //I love msvc optimizations, thanks for __userpurge and useless Color argument
+{
+	auto pOriginalFunc = m_mHookedVtables[VMT_DEATHNOTICE]->GetOriginalFunction<decltype(&CHooksMan::OnDeathNoticeGetTeamColor)>(OFFSET_DEATHNOTICE_GETCOLOR);
+	static Color cClr;
+	cClr = CCatConnect::GetDeathNoticeColorFromStack();
+	if (cClr.a())
+	{
+		*pClr = cClr;
+		return &cClr;
+	}
+	pOriginalFunc(pThis, pDumbArg, &cClr, iTeam, bLocalPlayer);
+	*pClr = cClr;
+	return &cClr;
+}
+
 LRESULT CHooksMan::OnWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	if (uMsg == WM_KEYDOWN)
@@ -389,7 +398,7 @@ bool CHooksMan::CheckScoreBoardVMT(void * pThis)
 	auto pTable = m_mHookedVtables[VMT_SCOREBOARD];
 	if ((void ***)pThis == pTable->GetThis())
 		return true;
-	delete pTable;
+	pTable->DestroyNoRestore();
 	m_mHookedVtables.erase(VMT_SCOREBOARD);
 	return false;
 }

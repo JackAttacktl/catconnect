@@ -11,6 +11,17 @@
 #include "visual/glow.h"
 #include <boost/algorithm/string.hpp>
 #include "cmdwrapper.h"
+#include "vgui_controls/MessageMap.h"
+#include "vgui_controls/Panel.h"
+#include "vgui/ipanel.h"
+#include "vgui/ISurface.h"
+#include "shareddefs.h"
+#include "hudelement.h"
+#include "hud_macros.h"
+#pragma push_macro ("DECLARE_CLASS_SIMPLE")
+#include "public/declarefix.h"
+#include "hud_basedeathnotice.h"
+#pragma pop_macro ("DECLARE_CLASS_SIMPLE")
 
 #include <optional>
 #include <vector>
@@ -34,6 +45,7 @@ NSCore::CSetting votekicks_manage(xorstr_("catconnect.votekicks.manage"), xorstr
 NSCore::CSetting votekicks_showvoters(xorstr_("catconnect.votekicks.partychat.notifyvoters"), xorstr_("1"));
 NSCore::CSetting scoreboard_showcats(xorstr_("catconnect.scoreboard.showcats"), xorstr_("1"));
 NSCore::CSetting scoreboard_showfriends(xorstr_("catconnect.scoreboard.showfriends"), xorstr_("1"));
+NSCore::CSetting deathnotice_changecolors(xorstr_("catconnect.deathnotice.changecolors"), xorstr_("1"));
 NSCore::CSetting debug_show(xorstr_("catconnect.showdebug"), xorstr_("0"));
 
 struct SSavedCat
@@ -148,20 +160,7 @@ void CCatConnect::OnScoreBoardUpdate(void * pThis)
 
 				//if he is a CAT, then set his color to green on scoreboard and show his class
 
-				Color cScoreBoardColor = Color(255, 255, 255, 255);
-				switch (eClientState)
-				{
-				case CatState_Cat:
-					cScoreBoardColor = Color(0, 255, 0, 255);
-					break;
-				case CatState_Friend:
-				case CatState_Party:
-					cScoreBoardColor = Color(0, 213, 153, 255);
-					break;
-				case CatState_FakeCat:
-					cScoreBoardColor = Color(0, 0, 255, 255);
-					break;
-				}
+				Color cScoreBoardColor = GetStateColor(eClientState);
 
 				IClientNetworkable * pNetworkable = NSInterfaces::g_pClientEntityList->GetClientNetworkable(iClient);
 				IClientUnknown * pUnknown = nullptr;
@@ -196,6 +195,45 @@ void CCatConnect::OnScoreBoardUpdate(void * pThis)
 
 				CALL_VFUNC_OFFS(void (__thiscall *)(void * pThis, int, Color), pCurrentList, 228)(pCurrentList, iItemID, cScoreBoardColor); //SetItemFgColor
 			}
+		}
+	}
+}
+
+void CCatConnect::OnDeathNoticePaintPre(void * pThis)
+{
+	if (!deathnotice_changecolors.GetBool())
+		return;
+
+	ms_vColors.clear();
+
+	static CHudBaseDeathNotice * pRealThis = (CHudBaseDeathNotice *)NSUtils::CVirtualMemberTableMan::DoDynamicCast((void ***)pThis, xorstr_("CHudBaseDeathNotice")); //this never changed
+
+	typedef void (__thiscall * RetireExpiredDeathNoticesFn)(CHudBaseDeathNotice *);
+	static RetireExpiredDeathNoticesFn pRetireExpiredDeathNotices = nullptr;
+	if (!pRetireExpiredDeathNotices)
+	{
+		pRetireExpiredDeathNotices = (RetireExpiredDeathNoticesFn)NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x55\x8B\xEC\x83\xEC\x08\x53\x56\x8B\xF1\x57\x8B\xBE\xCC\x01\x00\x00"), 17);
+		if (!pRetireExpiredDeathNotices)
+			return; //wtf?
+	}
+
+	pRetireExpiredDeathNotices(pRealThis);
+
+	struct DeathNoticeItemFixed : public DeathNoticeItem { int iDummy; };
+	CUtlVector<DeathNoticeItemFixed> * m_vDeathNotices = (CUtlVector<DeathNoticeItemFixed> *)((char *)pRealThis + 448);
+
+	for (int i = 0, iCount = m_vDeathNotices->Count(); i < iCount; i++)
+	{
+		DeathNoticeItemFixed &sMsg = m_vDeathNotices->Element(i);
+		if (sMsg.Killer.szName[0])
+		{
+			int iKillerClient = NSInterfaces::g_pEngineClient->GetPlayerForUserID(sMsg.iKillerID);
+			ms_vColors.push_back(ShouldChangeColor(iKillerClient) ? GetClientColor(iKillerClient) : Color(0, 0, 0, 0));
+		}
+		if (sMsg.Victim.szName[0])
+		{
+			int iVictimClient = NSInterfaces::g_pEngineClient->GetPlayerForUserID(sMsg.iVictimID);
+			ms_vColors.push_back(ShouldChangeColor(iVictimClient) ? GetClientColor(iVictimClient) : Color(0, 0, 0, 0));
 		}
 	}
 }
@@ -605,7 +643,7 @@ void CCatConnect::CVoteListener::FireGameEvent(IGameEvent * pEvent)
 
 ECatState CCatConnect::GetClientState(int iClient)
 {
-	if (iClient <= 0 /*|| iClient > playerhelpers->GetMaxClients()*/)
+	if (iClient <= 0 || iClient > NSInterfaces::g_pEngineClient->GetMaxClients())
 		return CatState_Default;
 
 	if (iClient == NSInterfaces::g_pEngineClient->GetLocalPlayer())
@@ -613,6 +651,9 @@ ECatState CCatConnect::GetClientState(int iClient)
 
 	player_info_t sInfo;
 	if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(iClient, &sInfo))
+		return CatState_Default;
+
+	if (sInfo.fakeplayer || sInfo.ishltv)
 		return CatState_Default;
 
 	uint8_t iCat = IsCat(sInfo.friendsID);
@@ -652,6 +693,39 @@ bool CCatConnect::InSameParty(int iIndex)
 	return false;
 }
 
+Color CCatConnect::GetStateColor(ECatState eState)
+{
+	switch (eState)
+	{
+	case CatState_Cat:
+		return Color(0, 255, 0, 255);
+	case CatState_Friend:
+	case CatState_Party:
+		return Color(0, 213, 153, 255);
+	case CatState_FakeCat:
+		return Color(0, 0, 255, 255);
+	}
+
+	return Color(0, 0, 0, 0);
+}
+
+bool CCatConnect::ShouldChangeColor(int iClient)
+{
+	ECatState eState = GetClientState(iClient);
+
+	switch (eState)
+	{
+	case ECatState::CatState_Cat:
+	case ECatState::CatState_FakeCat:
+		return scoreboard_showcats.GetBool();
+	case ECatState::CatState_Friend:
+	case ECatState::CatState_Party:
+		return scoreboard_showfriends.GetBool();
+	default:
+		return false;
+	}
+}
+
 ICatConnect * g_pCatConnectIface = nullptr;
 
 NSUtils::ITimer * CCatConnect::ms_pCheckTimer;
@@ -660,3 +734,4 @@ CCatConnect::CPlayerListener CCatConnect::ms_GameEventPlayerListener;
 CCatConnect::CVoteListener CCatConnect::ms_GameEventVoteCastListener;
 bool CCatConnect::ms_bJustJoined = false;
 std::map<uint32_t, uint8_t> CCatConnect::ms_mIsCat;
+std::vector<Color> CCatConnect::ms_vColors;

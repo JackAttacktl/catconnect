@@ -13,7 +13,7 @@
 #include "settings/settings.h"
 #include "inputsystem/iinputsystem.h"
 
-NSMenu::CMenu::CMenu() : m_bEnabled(false), m_bIsOnDrag(false), m_pMouse{ 0, 0 }, m_pPrevMouse{ 0, 0 }, m_pMyPosition{ 100, 100 }, m_pMyScale{ 208, 420 }, m_EMouseButton(EMouseButton::MB_None), m_iKey(BUTTON_CODE_NONE)
+NSMenu::CMenu::CMenu() : m_bEnabled(false), m_bIsOnDrag(false), m_pMouse{ 0, 0 }, m_pPrevMouse{ 0, 0 }, m_pMyPosition{ 100, 100 }, m_pMyScale{ 208, 436 }, m_EMouseButton(EMouseButton::MB_None), m_iKey(BUTTON_CODE_NONE)
 {
 	m_pMyStyle = new CDefaultStyle();
 	m_pTabs = new CTabGroup(this);
@@ -53,6 +53,7 @@ void NSMenu::CMenu::CreateGUI()
 				{
 					new CCheckBox(this, xorstr_("Show cats"), xorstr_("catconnect.scoreboard.showcats")),
 					new CCheckBox(this, xorstr_("Show friends && party"), xorstr_("catconnect.scoreboard.showfriends")),
+					new CCheckBox(this, xorstr_("Death notify colors"), xorstr_("catconnect.deathnotice.changecolors")),
 				}, GROUP_DEFAULT_WIDTH),
 			new CGroupBox(this, xorstr_("Visual"),
 				{

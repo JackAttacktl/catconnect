@@ -33,7 +33,10 @@
 #endif
 #include <stdint.h>
 #include <map>
+#include <vector>
+#include <string>
 #include "xorstr.h"
+#include <boost/algorithm/string.hpp>
 
 //disable stupid warnings
 #pragma warning (disable : 4996)
@@ -285,8 +288,22 @@ namespace NSUtils
 			static char s_cOut[256];
 			const char * pSym = &pDecorated[4];
 			strcpy(s_cOut, pSym);
-			char * pAt = strchr(s_cOut, '@');
-			if (pAt) *pAt = '\0';
+			char * pAt = strrchr(s_cOut, '@');
+			if (pAt)
+			{
+				while (*pAt == '@') { *pAt = '\0'; pAt--; }
+				if (strchr(s_cOut, '@'))
+				{
+					std::vector<std::string> sStrs; std::string sOut;
+					boost::split(sStrs, s_cOut, boost::is_any_of(xorstr_("@")));
+					for (int i = sStrs.size() - 1; i >= 0; i--)
+					{
+						sOut += sStrs[i];
+						if (i) sOut += xorstr_("::");
+					}
+					strcpy(s_cOut, sOut.c_str());
+				}
+			}
 			return s_cOut;
 		}
 

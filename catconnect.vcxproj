@@ -149,7 +149,7 @@
       <OmitFramePointers>true</OmitFramePointers>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <StringPooling>true</StringPooling>
-      <ExceptionHandling>false</ExceptionHandling>
+      <ExceptionHandling>Sync</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
@@ -248,7 +248,9 @@
     <ClInclude Include="globals.h" />
     <ClInclude Include="hooksman.h" />
     <ClInclude Include="interfaces.h" />
+    <ClInclude Include="isettings.h" />
     <ClInclude Include="public\bitbuffix.h" />
+    <ClInclude Include="public\declarefix.h" />
     <ClInclude Include="public\globalvars_base.h" />
     <ClInclude Include="public\imaterialsystemfixed.h" />
     <ClInclude Include="public\isurfacefixed.h" />

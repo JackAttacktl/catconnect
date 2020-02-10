@@ -325,5 +325,11 @@
     <ClInclude Include="core\cmdwrapper.h">
       <Filter>Header\core</Filter>
     </ClInclude>
+    <ClInclude Include="public\declarefix.h">
+      <Filter>Header\global</Filter>
+    </ClInclude>
+    <ClInclude Include="isettings.h">
+      <Filter>Header</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

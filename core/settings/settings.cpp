@@ -4,6 +4,7 @@
 #include "cmdwrapper.h"
 #include "xorstr.h"
 #include "printers.h"
+#include "globals.h"
 #include <cstring>
 
 #pragma warning (disable : 4996)
@@ -168,6 +169,14 @@ void NSCore::CSettingsCollector::LoadSettings()
 		strcpy(pSett->m_pSettingCurrentValue, pSetting->m_pSettingValue);
 		pSett->m_pSettingInstance->RefreshValue();
 	}
+
+	if (!g_pSettingsExposer)
+	{
+		//create exposer here
+		static CSettingsExposer cExposer;
+		g_pSettingsExposer = &cExposer;
+		NSGlobals::g_mMyInterfaces[xorstr_(SETTINGS_IFACE_VERSION)] = g_pSettingsExposer;
+	}
 }
 
 void NSCore::CSettingsCollector::SaveSettings()
@@ -219,3 +228,5 @@ void NSCore::CSetting::RefreshValue()
 	m_flValue = strtof(pActualValue, &pDummy);
 	m_cValue = pActualValue;
 }
+
+NSCore::CSettingsExposer * NSCore::g_pSettingsExposer = nullptr;

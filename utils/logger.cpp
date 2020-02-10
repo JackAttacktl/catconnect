@@ -30,6 +30,10 @@ void NSUtils::CLogger::Init()
 
 void NSUtils::CLogger::Log(ELogType iType, const char * pFormat, ...)
 {
+#ifndef _DEBUG
+	if (iType == NSUtils::ELogType::Log_Debug)
+		return;
+#endif
 	NSUtils::CAutoLocker<std::recursive_mutex> cAutolock(&ms_LogMutex);
 	char cLogBuffer[1024];
 
@@ -63,19 +67,18 @@ void NSUtils::CLogger::Log(ELogType iType, const char * pFormat, ...)
 		sprintf(cLogMessage, xorstr_("%s [ERROR] %s\n"), cTimeStamp, cLogBuffer);
 		LogActual(cLogMessage, pFile, Color(255, 96, 96, 255));
 		break;
-	case NSUtils::ELogType::Log_Debug:
 #ifdef _DEBUG
+	case NSUtils::ELogType::Log_Debug:
 		sprintf(cLogMessage, xorstr_("%s [DEBUG] %s\n"), cTimeStamp, cLogBuffer);
 		LogActual(cLogMessage, pFile, Color(0, 0, 255, debug_show.GetBool() ? 255 : 0));
-#endif
 		break;
+#endif
 	case NSUtils::ELogType::Log_Fatal:
 		sprintf(cLogMessage, xorstr_("%s [FATAL] %s\n"), cTimeStamp, cLogBuffer);
 		LogActual(cLogMessage, pFile, Color(255, 0, 0, 255));
 		LI_FN(ExitProcess)(1);
 		break;
 	default:
-		//wtf
 		if (pFile)
 			fclose(pFile);
 		break;

@@ -2,6 +2,7 @@
 #define _SETTINGS_INC_
 
 #include "defs.h"
+#include "isettings.h"
 #include <map>
 #include <string>
 
@@ -56,21 +57,21 @@ namespace NSCore
 		}
 	};
 
-	class CSetting
+	class CSetting : public ISetting
 	{
 	public:
 		explicit CSetting(const char * pName, const char * pDefValue);
-		~CSetting();
+		virtual ~CSetting();
 
-		inline void SetValue(const char * pValue) { CSettingsCollector::SetSettingValue(m_cMyName, pValue); RefreshValue(); }
-		inline void ResetValue() { CSettingsCollector::ResetSettingValueToDefault(m_cMyName); RefreshValue(); }
+		virtual void SetValue(const char * pValue) { CSettingsCollector::SetSettingValue(m_cMyName, pValue); RefreshValue(); }
+		virtual void ResetValue() { CSettingsCollector::ResetSettingValueToDefault(m_cMyName); RefreshValue(); }
 
-		inline const char * GetName() const { return m_cMyName; }
-		inline float GetFloat() const { return m_flValue; }
-		inline int GetInt() const { return mu_Value.i; }
-		inline unsigned int GetUInt() const { return mu_Value.u; }
-		inline const char * GetString() const { return m_cValue; }
-		inline bool GetBool() const { return !!mu_Value.i; }
+		virtual const char * GetName() const { return m_cMyName; }
+		virtual float GetFloat() const { return m_flValue; }
+		virtual int GetInt() const { return mu_Value.i; }
+		virtual unsigned int GetUInt() const { return mu_Value.u; }
+		virtual const char * GetString() const { return m_cValue; }
+		virtual bool GetBool() const { return !!mu_Value.i; }
 
 	private:
 		friend class CSettingsCollector;
@@ -88,6 +89,17 @@ namespace NSCore
 		const char * m_cValue;
 		char m_cMyName[SETTING_MAX_NAME_LEN];
 	};
+
+	class CSettingsExposer : public ISettingsCollector
+	{
+	public:
+		virtual bool IsSettingRegistered(const char * pSettingName) { return CSettingsCollector::IsSettingRegistered(pSettingName); }
+		virtual ISetting * FindSettingByName(const char * pSettingName) { return CSettingsCollector::FindSettingByName(pSettingName); }
+		virtual ISetting * GetSettingByNumber(unsigned int iNumber) { return CSettingsCollector::GetSettingByNumber(iNumber); }
+		virtual unsigned int GetCountOfSettings() { return CSettingsCollector::GetCountOfSettings(); }
+	};
+
+	extern CSettingsExposer * g_pSettingsExposer;
 };
 
 #endif

@@ -14,4 +14,4 @@ To build this you need use Visual Studio 2019 or later. Simply clone it to your 
 * [Altimor](https://gist.github.com/AltimorTASDK) - for his netvar manager cuz I was lazy
 * [JustasMasiulis](https://github.com/JustasMasiulis) - for xorstr and lazy importer
 * [alliedmodders](https://alliedmods.net) - for fixed bitbuffers
-* [Valve](https://www.valvesoftware.com) - for outdated sdk and broken compiled libraries (p.s. I you will modify this tool use lib/tier1_recompiled.lib instead of tier1.lib from ssdk if you don't want to have crashes in tier0.dll && tier1.dll due to KeyValues)
+* [Valve](https://www.valvesoftware.com) - for outdated sdk and broken compiled libraries (p.s. If you will modify this tool use lib/tier1_recompiled.lib instead of tier1.lib from ssdk if you don't want to have crashes in tier0.dll && tier1.dll due to KeyValues)

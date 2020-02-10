@@ -26,7 +26,8 @@ enum VMTHookNum : uint8_t
 	VMT_PANEL,
 	VMT_VIEWPORT,
 	VMT_SCOREBOARD,
-	VMT_HUDCHAT
+	VMT_DEATHNOTICE,
+	VMT_DEATHNOTICE_PANEL
 };
 
 namespace vgui { typedef unsigned int VPANEL; }
@@ -60,12 +61,12 @@ private:
 	static void FASTERCALL HookScoreBoard(void * pThis);
 	static void FASTERCALL GetLastPressedKey(int &iCode, ButtonCode_t &iKey);
 	static void __fastcall UpdateScoreBoard(IViewPortPanel * pThis, void * pDumbArg);
-	//vararg functions always __cdecl EVEN if they are MEMBERS of the class
-	//static void __cdecl OnChatPrintf(CHudBaseChat * pThis, int iClient, int iFilter, const char * pFormat, ...);
 	static void __fastcall ClientCmd(IVEngineClient * pThis, void * pDummyArg, const char * pCmd);
 	static void __fastcall ClientCmd_Unrestricted(IVEngineClient * pThis, void * pDummyArg, const char * pCmd);
 	static void __fastcall ExecuteClientCmd(IVEngineClient * pThis, void * pDummyArg, const char * pCmd);
 	static bool __fastcall DispatchUserMessage(IBaseClientDLL * pThis, void * pDumbArg, int iMessageID, old_bf_read * pBFMessage);
+	static void __fastcall OnDeathNoticePaint(void * pThis, void * pDumbArg);
+	static Color * __fastcall OnDeathNoticeGetTeamColor(void * pThis, void * pDumbArg, Color * pClr, int iTeam, bool bLocalPlayer);
 	static LRESULT __stdcall OnWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 private:

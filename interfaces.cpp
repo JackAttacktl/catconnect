@@ -184,7 +184,7 @@ void NSInterfaces::InitInterfaces()
 	bool bDummy = false;
 	WAIT_FOR_SIMPLE_INIT(g_pHud->m_bHudTexturesLoaded, bDummy); //wait for hud init
 	void * pDummy = nullptr;
-	WAIT_FOR_SIMPLE_INIT(g_pHud->FindElement(xorstr_("CHudChat")), pDummy);
+	WAIT_FOR_SIMPLE_INIT(g_pHud->FindElement(xorstr_("CTFHudDeathNotice")), pDummy);
 	
 	//WAIT_FOR_SIMPLE_INIT(((CUserMessages * (__cdecl*)())NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x83\x3D\x2A\x2A\x2A\x2A\x00\x75\x2A\x6A\x24\xE8\x2A\x2A\x2A\x2A\x83\xC4\x04"), 19))(), g_pUserMessages);
 	g_pUserMessages = (CUserMessages *)WaitForObjectAllocationAndInitialization((void **)(NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x83\x3D\x2A\x2A\x2A\x2A\x00\x75\x2A\x6A\x24\xE8\x2A\x2A\x2A\x2A\x83\xC4\x04"), 19) + 2), false); //this signature also used in reclass
