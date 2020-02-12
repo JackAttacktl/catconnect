@@ -17,9 +17,12 @@
 #include "visual/drawer.h"
 #include "visual/glow.h"
 #include "public/bitbuffix.h"
+#include "logger.h"
 #include <cstring>
 #include <thread>
 #include <chrono>
+
+NSCore::CSetting remove_newlines(xorstr_("catconnect.chat.removeunprintable"), xorstr_("1"));
 
 #define OFFSET_CHATPRINTF 19
 
@@ -242,6 +245,8 @@ bool CHooksMan::DispatchUserMessage(IBaseClientDLL * pThis, void * pDumbArg, int
 	if (!pBFMessage || pBFMessage->IsOverflowed())
 		return pOriginalFunc(pThis, pDumbArg, iMessageID, pBFMessage);
 
+	bool bCallOriginal = true;
+
 	switch (iMessageID)
 	{
 		case 46:
@@ -259,14 +264,27 @@ bool CHooksMan::DispatchUserMessage(IBaseClientDLL * pThis, void * pDumbArg, int
 		case 3: //SayText
 		case 4: //SayText2
 		{
+			if (!remove_newlines.GetBool())
+				break;
+
 			int iClient = pBFMessage->ReadByte();
 			bool bWantsToChat = true;
 			if (iMessageID == 4)
 				bWantsToChat = !!pBFMessage->ReadByte();
+
 			char cString[2048];
 			char cAdditionalBufs[4][256]{ {0}, {0}, {0}, {0} };
+
 			pBFMessage->ReadString(cString, sizeof(cString));
 			std::string sNewString = CCatConnect::OnChatMessage(iClient, 0, cString);
+
+			if (remove_newlines.GetInt() == 2 && !sNewString.length())
+			{
+				pBFMessage->Seek(0);
+				bCallOriginal = false;
+				break;
+			}
+
 			if (iMessageID == 4)
 			{
 				for (int i = 0; i < 4; i++)
@@ -276,29 +294,48 @@ bool CHooksMan::DispatchUserMessage(IBaseClientDLL * pThis, void * pDumbArg, int
 					{
 						std::string sNewMessage = CCatConnect::OnChatMessage(iClient, 0, cAdditionalBufs[i]);
 						strcpy(cAdditionalBufs[i], sNewMessage.data());
+						//0 - nickname, 1 - message
+						if (i == 1)
+						{
+							//NSUtils::CLogger::Log(NSUtils::Log_Debug, xorstr_("Message (len %i): %s"), sNewMessage.length(), sNewMessage.c_str());
+							if (remove_newlines.GetInt() == 2 && !sNewMessage.length())
+							{
+								pBFMessage->Seek(0);
+								bCallOriginal = false;
+								break;
+							}
+						}
 					}
 				}
+				if (!bCallOriginal)
+					break;
 			}
+
 			auto * pBFWrite = (old_bf_write *)pBFMessage;
 			pBFWrite->Reset();
 			pBFWrite->WriteByte(iClient);
 			if (iMessageID == 4)
 				pBFWrite->WriteByte(bWantsToChat);
 			pBFWrite->WriteString(cString);
+
 			if (iMessageID == 4)
 				for (int i = 0; i < 4; i++)
 					if (cAdditionalBufs[i][0])
 						pBFWrite->WriteString(cAdditionalBufs[i]);
+
 			pBFMessage->m_nDataBits = pBFWrite->GetNumBitsWritten();
 			pBFMessage->m_nDataBytes = pBFWrite->GetNumBytesWritten();
 			pBFMessage->Seek(0);
+
 			break;
 		}
 		default:
 			break;
 	}
 
-	return pOriginalFunc(pThis, pDumbArg, iMessageID, pBFMessage);
+	if (bCallOriginal)
+		return pOriginalFunc(pThis, pDumbArg, iMessageID, pBFMessage);
+	return true;
 }
 
 void CHooksMan::LevelInitPostEntity(IBaseClientDLL * pThis, void * pDumbArg)

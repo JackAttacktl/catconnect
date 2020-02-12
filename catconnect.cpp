@@ -18,6 +18,7 @@
 #include "shareddefs.h"
 #include "hudelement.h"
 #include "hud_macros.h"
+#include "logger.h"
 #pragma push_macro ("DECLARE_CLASS_SIMPLE")
 #include "public/declarefix.h"
 #include "hud_basedeathnotice.h"
@@ -106,7 +107,7 @@ void CCatConnect::Destroy()
 
 void CCatConnect::Trigger()
 {
-	if (!NSInterfaces::g_pEngineClient->IsInGame())
+	if (!NSInterfaces::g_pEngineClient->IsInGame() || NSInterfaces::g_pEngineClient->IsPlayingDemo())
 	{
 		if (debug_show.GetBool())
 			NSUtils::PrintToClientConsole(Color{ 255, 0, 0, 255 }, xorstr_("[CatConnect] Cannot force auth while not in game!\n"));
@@ -208,7 +209,7 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 
 	static CHudBaseDeathNotice * pRealThis = (CHudBaseDeathNotice *)NSUtils::CVirtualMemberTableMan::DoDynamicCast((void ***)pThis, xorstr_("CHudBaseDeathNotice")); //this never changed
 
-	typedef void (__thiscall * RetireExpiredDeathNoticesFn)(CHudBaseDeathNotice *);
+	typedef void(__thiscall * RetireExpiredDeathNoticesFn)(CHudBaseDeathNotice *);
 	static RetireExpiredDeathNoticesFn pRetireExpiredDeathNotices = nullptr;
 	if (!pRetireExpiredDeathNotices)
 	{
@@ -225,7 +226,7 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 	//In fact there must be no clients with totally same name on the server! This is actually illegal and if they have same name then it's one of 2 cases:
 	//1. There an invisible character in name
 	//2. There (n) prefix before name
-	auto FindClientUserIDByName = [](const char* pName) -> int
+	auto FindClientUserIDByName = [](const char * pName) -> int
 	{
 		for (int i = 1; i <= NSInterfaces::g_pEngineClient->GetMaxClients(); i++)
 		{
@@ -238,6 +239,19 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 		}
 
 		return -1;
+	};
+
+	auto ShouldAddDummyColor = [](DeathNoticeItemFixed & sMsg, bool bKiller) -> bool
+	{
+		if (bKiller)
+		{
+			if (sMsg.bSelfInflicted && (sMsg.iKillerID == sMsg.iVictimID || //suicide
+				sMsg.iKillerID == 0)) //killer world
+				return false;
+			return true;
+		}
+
+		return true;
 	};
 
 	for (int i = 0, iCount = m_vDeathNotices->Count(); i < iCount; i++)
@@ -265,19 +279,13 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 					sMsg.iVictimID = iTriedVictim;
 			}
 		}
-		/*
-		else if (IsPaintIgnored(sMsg.iconDeath->szShortName))
-		{
-			//TODO: Ignore points capture, payload points capture, points block, robot kills, pass time (steal, score, get), bumper car, necrosmash
-		}
-		*/
 
 		if (sMsg.Killer.szName[0])
 		{
 			int iKillerClient = NSInterfaces::g_pEngineClient->GetPlayerForUserID(sMsg.iKillerID);
 			ms_vColors.push_back(ShouldChangeColor(iKillerClient) ? GetClientColor(iKillerClient) : Color(0, 0, 0, 0));
 		}
-		else
+		else if (ShouldAddDummyColor(sMsg, true))
 			ms_vColors.push_back(Color(0, 0, 0, 0));
 
 		if (sMsg.Victim.szName[0])
@@ -285,7 +293,7 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 			int iVictimClient = NSInterfaces::g_pEngineClient->GetPlayerForUserID(sMsg.iVictimID);
 			ms_vColors.push_back(ShouldChangeColor(iVictimClient) ? GetClientColor(iVictimClient) : Color(0, 0, 0, 0));
 		}
-		else
+		else if (ShouldAddDummyColor(sMsg, false))
 			ms_vColors.push_back(Color(0, 0, 0, 0));
 	}
 }
@@ -295,14 +303,17 @@ std::string CCatConnect::OnChatMessage(int iClient, int iFilter, const char * pM
 	std::string sOriginalMsg = pMessage;
 	if (iClient > 0)
 	{
-		player_info_t sInfo;
-		if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(iClient, &sInfo) || IsCat(sInfo.friendsID) != 1)
-			return sOriginalMsg;
+		//player_info_t sInfo;
+		//if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(iClient, &sInfo) || IsCat(sInfo.friendsID) != 1)
+		//	return sOriginalMsg;
 		if (iFilter == CHAT_FILTER_NONE || (iFilter & CHAT_FILTER_PUBLICCHAT))
 		{
-			//remove newlines spammed by cats from chat
+			//remove unprintable spammed by cats from chat
 			boost::erase_all(sOriginalMsg, xorstr_("\r"));
 			boost::erase_all(sOriginalMsg, xorstr_("\n"));
+			boost::erase_all(sOriginalMsg, xorstr_("\t"));
+			boost::erase_all(sOriginalMsg, xorstr_("\v"));
+			boost::erase_all(sOriginalMsg, xorstr_("\x1B")); //ESC character
 		}
 	}
 	return sOriginalMsg;
@@ -325,7 +336,7 @@ bool CCatConnect::OnClientCommand(const char * pCmdLine) { return NSCore::CCmdWr
 
 void CCatConnect::CreateMove(float flInputSample, CUserCmd * pCmd)
 {
-	if (ms_bJustJoined && NSInterfaces::g_pEngineClient->IsInGame())
+	if (ms_bJustJoined && NSInterfaces::g_pEngineClient->IsInGame() && !NSInterfaces::g_pEngineClient->IsPlayingDemo())
 	{
 		//create another auth timer here
 		auto * pTimer = g_CTimerMan.CreateTimer(nullptr, 5.0);
@@ -508,7 +519,7 @@ void CCatConnect::SaveCats()
 
 bool CCatConnect::OnFakeAuthTimer(NSUtils::ITimer * pTimer, void * pData)
 {
-	if (!NSInterfaces::g_pEngineClient->IsInGame())
+	if (!NSInterfaces::g_pEngineClient->IsInGame() || NSInterfaces::g_pEngineClient->IsPlayingDemo())
 		return false;
 
 	SendCatMessage(CAT_FAKE);
@@ -519,7 +530,7 @@ bool CCatConnect::OnAuthTimer(NSUtils::ITimer * pTimer, void * pData)
 {
 	//return true if success, false if timer should be stopped
 	//we are not in-game, so we can't send messages to cats :c
-	if (!NSInterfaces::g_pEngineClient->IsInGame()) return true;
+	if (!NSInterfaces::g_pEngineClient->IsInGame() || NSInterfaces::g_pEngineClient->IsPlayingDemo()) return true;
 
 	//oh yeah! We are in game. Now send message to all cats!
 
@@ -777,6 +788,35 @@ bool CCatConnect::ShouldChangeColor(int iClient)
 		return false;
 	}
 }
+
+NSCore::CCatCommandSafe votehook(xorstr_("callvote"), [](const CCommand & rCmd)
+{
+	if (!votekicks_manage.GetBool())
+		return false;
+
+	if (rCmd.ArgC() < 3)
+		return false;
+
+	if (stricmp(rCmd.Arg(1), xorstr_("kick")))
+		return false;
+
+	int iUserID = atoi(rCmd.Arg(2));
+
+	if (iUserID <= 0)
+		return false;
+
+	int iClient = NSInterfaces::g_pEngineClient->GetPlayerForUserID(iUserID);
+	if (iClient <= 0)
+		return false;
+
+	if (CCatConnect::GetClientState(iClient) == ECatState::CatState_Cat)
+	{
+		NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X Your kick attempt was blocked. It's very bad idea to kick CATs except you wanna be marked as rage permanently by all CATs on the server and in IPC. Disable \"Manage votekicks\" option in menu if you really want to do this."), 0xE05938, 0xFF0000);
+		return true;
+	}
+
+	return false;
+});
 
 ICatConnect * g_pCatConnectIface = nullptr;
 
