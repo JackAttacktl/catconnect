@@ -37,20 +37,17 @@ typedef void * (* SteamCreateInterfaceFn)(const char * pName);
 
 #pragma comment (lib, "Kernel32.lib")
 
-//FIXME: I didn't really used it anywhere =|
-bool NSInterfaces::g_bHaveBeenWaitedForSomething = false;
-
 #define WAIT_FOR_SIMPLE_INIT(object, tempvar) while (!(tempvar = (object))) { std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
 
 void FASTERCALL NSInterfaces::WaitForModule(const char * pModuleName)
 {
-	while (LI_FN(GetModuleHandleA)(pModuleName) == nullptr) { g_bHaveBeenWaitedForSomething = true; std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+	while (LI_FN(GetModuleHandleA)(pModuleName) == nullptr) { std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
 }
 
 void * FASTERCALL NSInterfaces::WaitForExternal(const char * pModuleName, const char * pExternalName)
 {
 	volatile void * pRet = nullptr; //we use volatile to prevent aggressive compiler optimization
-	while (!(pRet = LI_FN(GetProcAddress)(LI_FN(GetModuleHandleA)(pModuleName), pExternalName))) { g_bHaveBeenWaitedForSomething = true; std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+	while (!(pRet = LI_FN(GetProcAddress)(LI_FN(GetModuleHandleA)(pModuleName), pExternalName))) { std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
 	return const_cast<void *>(pRet);
 }
 
@@ -62,10 +59,7 @@ void * FASTERCALL NSInterfaces::WaitForInterface(CreateInterfaceFn pFactory, con
 		void * pPotentialIFace = pFactory(pInterfaceName, nullptr);
 		pRet = WaitForObjectAllocationAndInitialization(&pPotentialIFace, true);
 		if (!pRet)
-		{
-			g_bHaveBeenWaitedForSomething = true;
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-		}
 	}
 	return const_cast<void *>(pRet);
 }
@@ -88,7 +82,6 @@ void * FASTERCALL NSInterfaces::WaitForObjectAllocationAndInitialization(void **
 		{
 			//this is bad pointer!
 			pRet = nullptr;
-			g_bHaveBeenWaitedForSomething = true;
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			continue;
 		}
@@ -102,7 +95,6 @@ void * FASTERCALL NSInterfaces::WaitForObjectAllocationAndInitialization(void **
 			{
 				//oke, pointer is bad
 				pRet = nullptr;
-				g_bHaveBeenWaitedForSomething = true;
 				std::this_thread::sleep_for(std::chrono::milliseconds(20));
 				continue;
 			}
@@ -123,10 +115,7 @@ void * FASTERCALL NSInterfaces::WaitForObjectAllocationAndInitialization(void **
 		}
 
 		if (!pRet)
-		{
-			g_bHaveBeenWaitedForSomething = true;
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-		}
 	}
 	return const_cast<void *>(pRet);
 }

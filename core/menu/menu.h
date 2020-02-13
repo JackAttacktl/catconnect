@@ -63,7 +63,7 @@ namespace NSMenu
 
 		inline void ToggleEnabled() { m_bEnabled = !m_bEnabled; }
 		inline EMouseButton GetMouseButton() const { return m_EMouseButton; }
-		inline bool IsDialogOpen() const { return !!m_vDialogs.size(); } //TODO
+		inline bool IsDialogOpen() const { return !!m_vDialogs.size(); }
 		inline unsigned int GetFocus() const { return m_iFocus; }
 		inline IWindowStyle * GetStyle() const { return m_pMyStyle; }
 		inline bool IsEnabled() const { return m_bEnabled; }

@@ -37,7 +37,7 @@ namespace NSReclass
 		inline int GetPlayerClass(int iClient)
 		{
 			CBaseEntity * pMyself = EntPointerOfEntNumber(RecheckAndGetEntity());
-			if (!pMyself) return false;
+			if (!pMyself) return 0;
 			static unsigned int s_iOffset = 0;
 			if (!s_iOffset)
 				s_iOffset = NETVARS_GET_OFFSET(xorstr_("DT_TFPlayerResource"), xorstr_("m_iPlayerClass"));
@@ -47,7 +47,7 @@ namespace NSReclass
 		inline int GetPlayerTeam(int iClient)
 		{
 			CBaseEntity * pMyself = EntPointerOfEntNumber(RecheckAndGetEntity());
-			if (!pMyself) return false;
+			if (!pMyself) return 0;
 			static unsigned int s_iOffset = 0;
 			if (!s_iOffset)
 				s_iOffset = NETVARS_GET_OFFSET(xorstr_("DT_TFPlayerResource"), xorstr_("baseclass"), xorstr_("m_iTeam"));

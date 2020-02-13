@@ -5,6 +5,7 @@
 #include "xorstr.h"
 #include "printers.h"
 #include "globals.h"
+#include "logger.h"
 #include <cstring>
 
 #pragma warning (disable : 4996)
@@ -154,7 +155,10 @@ void NSCore::CSettingsCollector::LoadSettings()
 {
 	auto oSettings = CCatFiles::GetSectionByID(Section_Settings);
 	if (!oSettings.has_value())
+	{
+		NSUtils::CLogger::Log(NSUtils::Log_Error, xorstr_("Unable to load settings: Invalid setting container!"));
 		return; //should never happen
+	}
 	auto& vSettings = oSettings.value();
 	if (!(*vSettings)->size())
 		return; //there are no settings. Is this first run?
@@ -184,7 +188,7 @@ void NSCore::CSettingsCollector::SaveSettings()
 	auto oSettings = CCatFiles::GetSectionByID(Section_Settings);
 	if (!oSettings.has_value())
 	{
-		//should we log this?
+		NSUtils::CLogger::Log(NSUtils::Log_Error, xorstr_("Unable to save settings: Invalid setting container!"));
 		return; //should never happen
 	}
 	auto& vSettings = oSettings.value();
@@ -204,7 +208,7 @@ NSCore::CSetting::CSetting(const char * pName, const char * pDefValue) : m_cValu
 	mu_Value.i = 0;
 	if (!CSettingsCollector::RegisterSetting(this, pName, pDefValue))
 	{
-		//TODO: We MUST log this
+		NSUtils::CLogger::Log(NSUtils::Log_Warning, xorstr_("Unable to register setting: Setting \"%s\" (def. value: \"%s\") already registered!"), pName, pDefValue);
 		m_cMyName[0] = 0;
 		return;
 	}

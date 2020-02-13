@@ -53,8 +53,6 @@ namespace NSInterfaces
 	void * FASTERCALL WaitForExternal(const char * pModuleName, const char * pExternalName);
 	void * FASTERCALL WaitForInterface(CreateInterfaceFn pFactory, const char * pInterfaceName);
 	void * FASTERCALL WaitForObjectAllocationAndInitialization(void ** pObjectPtr, bool bRTTIObject);
-
-	extern bool g_bHaveBeenWaitedForSomething;
 };
 
 #endif
