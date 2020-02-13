@@ -2,6 +2,7 @@
 #include "interface.h"
 #include "vmt.h"
 #include "netvars.h"
+#include "ctfplayerresource.h"
 #include "isteamclient.h"
 #include "isteamfriends.h"
 #include "public/imaterialsystemfixed.h"
@@ -221,6 +222,12 @@ void NSInterfaces::InitInterfaces()
 	//init this
 	NSUtils::g_CNetvars.Init();
 	NSCore::CSettingsCollector::Init();
+	NSReclass::g_pCTFPlayerResource = new NSReclass::CTFPlayerResource();
+}
+
+void NSInterfaces::Destroy()
+{
+	delete NSReclass::g_pCTFPlayerResource;
 }
 
 IBaseClientDLL * NSInterfaces::g_pClient = nullptr;

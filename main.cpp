@@ -18,6 +18,7 @@ DWORD WINAPI Start(LPVOID lpNothing)
 void Stop()
 {
 	CCatConnect::Destroy();
+	NSInterfaces::Destroy();
 }
 
 extern "C" __declspec(dllexport) void * __cdecl CreateInterface(const char * pIFaceName, int * pReturnCode)

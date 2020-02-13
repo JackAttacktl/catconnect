@@ -331,5 +331,8 @@
     <ClInclude Include="isettings.h">
       <Filter>Header</Filter>
     </ClInclude>
+    <ClInclude Include="utils\ctfplayerresource.h">
+      <Filter>Header\utils\reclass</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -55,8 +55,7 @@ namespace NSUtils
 
 		inline void Init()
 		{
-			//const auto * pClientClass = NSInterfaces::g_pClient->GetAllClasses();
-			const auto * pClientClass = CALL_VFUNC_OFFS(ClientClass * (__thiscall *)(IBaseClientDLL * pThis), NSInterfaces::g_pClient, 8)(NSInterfaces::g_pClient); //old offset 6, new 8
+			const auto * pClientClass = NSInterfaces::g_pClient->GetAllClasses();
 			while (pClientClass)
 			{
 				const auto pClassInfo = std::make_shared<SNode>(0, nullptr);

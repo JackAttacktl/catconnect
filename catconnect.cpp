@@ -3,6 +3,7 @@
 #include "catfiles.h"
 #include "printers.h"
 #include "ctfpartyclient.h"
+#include "ctfplayerresource.h"
 #include "cbaseentity.h"
 #include "globals.h"
 #include "isteamfriends.h"
@@ -10,6 +11,7 @@
 #include "visual/drawer.h"
 #include "visual/glow.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm.hpp>
 #include "cmdwrapper.h"
 #include "vgui_controls/MessageMap.h"
 #include "vgui_controls/Panel.h"
@@ -18,7 +20,6 @@
 #include "shareddefs.h"
 #include "hudelement.h"
 #include "hud_macros.h"
-#include "logger.h"
 #pragma push_macro ("DECLARE_CLASS_SIMPLE")
 #include "public/declarefix.h"
 #include "hud_basedeathnotice.h"
@@ -168,17 +169,16 @@ void CCatConnect::OnScoreBoardUpdate(void * pThis)
 				if (pNetworkable && (pUnknown = pNetworkable->GetIClientUnknown()))
 				{
 					NSReclass::CBaseEntity * pClientEnt = (NSReclass::CBaseEntity *)pUnknown->GetBaseEntity();
-					if (pClientEnt)
+					if (pClientEnt) //valid client
 					{
-						//this method is proper, but kinda retarded.
-						//TODO: Better retrieve this info from color. If prev set color alpha != 255 => player is dead
-						bool bAlive = pClientEnt->IsPlayerAlive(); //better get this from CTFPlayerResource?
+						bool bAlive = NSReclass::g_pCTFPlayerResource->IsPlayerAlive(iClient);
 						if (!bAlive)
 							cScoreBoardColor[3] /= 3;
 						NSReclass::CBaseEntity * pMySelf = (NSReclass::CBaseEntity *)NSGlobals::g_pLocalPlayer;
-						if (eClientState == CatState_Cat && pMySelf && pMySelf->GetTeam() != pClientEnt->GetTeam() && pClientEnt->GetTeam() > 1) //2 == red, 3 == blue
+						int iClientTeam = NSReclass::g_pCTFPlayerResource->GetPlayerTeam(iClient);
+						if (eClientState == CatState_Cat && pMySelf && pMySelf->GetTeam() != iClientTeam && iClientTeam > 1) //2 == red, 3 == blue
 						{
-							int iClass = pClientEnt->GetClass();
+							int iClass = NSReclass::g_pCTFPlayerResource->GetPlayerClass(iClient);
 							int iClassEmblem = 0;
 							if (bAlive)
 								iClassEmblem = *(int *)((char *)pRealThis + 0x360 + iClass * 4);
@@ -731,13 +731,13 @@ ECatState CCatConnect::GetClientState(int iClient)
 			return CatState_Friend;
 	}
 	else
-		NSUtils::PrintToClientConsole(Color{ 255, 0, 0, 255 }, xorstr_("[CatConnect] Error: ISteamFriends interface in null!\n"));
+		NSUtils::PrintToClientConsole(Color{ 255, 0, 0, 255 }, xorstr_("[CatConnect] Error: ISteamFriends interface is null!\n"));
 
 	std::vector<unsigned int> vPartyMembers = NSReclass::CTFPartyClient::GTFPartyClient()->GetPartySteamIDs();
 
-	for (auto iFriend : vPartyMembers) //don't use std::find
-		if (sInfo.friendsID == iFriend)
-			return CatState_Party;
+	auto iFound = boost::range::find(vPartyMembers, sInfo.friendsID);
+	if (iFound != vPartyMembers.end())
+		return CatState_Party;
 
 	if (iCat == 2)
 		return CatState_FakeCat;
@@ -748,12 +748,7 @@ ECatState CCatConnect::GetClientState(int iClient)
 bool CCatConnect::InSameParty(int iIndex)
 {
 	std::vector<unsigned int> vPartyMembers = NSReclass::CTFPartyClient::GTFPartyClient()->GetPartySteamIDs();
-
-	for (auto iFriend : vPartyMembers) //don't use std::find
-		if (iFriend == iIndex)
-			return true;
-	
-	return false;
+	return boost::range::find(vPartyMembers, iIndex) != vPartyMembers.end();
 }
 
 Color CCatConnect::GetStateColor(ECatState eState)

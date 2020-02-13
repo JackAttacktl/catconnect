@@ -48,6 +48,7 @@ namespace NSInterfaces
 	extern CGlobalVarsBase * g_pGlobals;
 	
 	void InitInterfaces();
+	void Destroy();
 	void FASTERCALL WaitForModule(const char * pModuleName);
 	void * FASTERCALL WaitForExternal(const char * pModuleName, const char * pExternalName);
 	void * FASTERCALL WaitForInterface(CreateInterfaceFn pFactory, const char * pInterfaceName);
