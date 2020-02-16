@@ -1,5 +1,6 @@
 #include "defs.h"
 #include "printers.h"
+#include "timers.h"
 #include "ctfpartyclient.h"
 #include "icvar.h"
 #include "interfaces.h"
@@ -71,7 +72,25 @@ void NSUtils::PrintToChatAll(bool bTeamChat, const char * pFormat, ...)
 		sToPrintAll += xorstr_("say ");
 	sToPrintAll += cBuffer;
 
-	NSInterfaces::g_pEngineClient->ClientCmd_Unrestricted(sToPrintAll.c_str());
+	static std::vector<std::string> s_vToSay;
+	static NSUtils::ITimer * s_pTimer = nullptr;
+	if (!s_pTimer)
+	{
+		s_pTimer = g_CTimerMan.CreateTimer((void *)&s_vToSay, 0.5);
+		s_pTimer->SetCallback(NSUtils::TimerCallbackFn([](NSUtils::ITimer * pTimer, void * pData)
+		{
+			std::vector<std::string> * pVec = (std::vector<std::string> *)pData;
+			if (!pVec->size())
+				return true;
+			std::string sToSay = pVec->at(0);
+			pVec->erase(pVec->begin());
+			NSInterfaces::g_pEngineClient->ClientCmd_Unrestricted(sToSay.c_str());
+			memset(sToSay.data(), 0, sToSay.length());
+			return true;
+		}));
+		s_pTimer->SetFlags(TIMER_REPEAT);
+	}
+
+	s_vToSay.push_back(sToPrintAll);
 	memset(cBuffer, 0, sizeof(cBuffer));
-	memset(sToPrintAll.data(), 0, sToPrintAll.length());
 }

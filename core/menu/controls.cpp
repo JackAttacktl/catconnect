@@ -267,7 +267,7 @@ unsigned int NSMenu::CSlider::Draw(bool bMouseOver)
 		m_iValue = m_pBindedSetting->GetInt();
 		RecheckValue();
 	}
-	int iNewWidth = m_iWidth - 30;
+	int iNewWidth = m_iWidth - 15;
 	Color cColor = bMouseOver ? HTEXT : CTEXT;
 	NSCore::CDrawer::DrawString(m_iX, m_iY, cColor, m_cName, NSCore::NSDrawUtils::g_iFontArial);
 

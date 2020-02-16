@@ -142,6 +142,7 @@
     <ClCompile Include="interfaces.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="public\MaterialSystemUtil.cpp" />
+    <ClCompile Include="public\segvcatch\lib\segvcatch.cpp" />
     <ClCompile Include="utils\logger.cpp" />
     <ClCompile Include="utils\netvars.h" />
     <ClCompile Include="utils\printers.cpp" />

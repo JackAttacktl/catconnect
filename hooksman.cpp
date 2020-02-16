@@ -261,6 +261,12 @@ bool CHooksMan::DispatchUserMessage(IBaseClientDLL * pThis, void * pDumbArg, int
 			pBFMessage->Seek(0);
 			break;
 		}
+		case 47:
+		case 48:
+		{
+			CCatConnect::SetVoteState();
+			break;
+		}
 		case 3: //SayText
 		case 4: //SayText2
 		{

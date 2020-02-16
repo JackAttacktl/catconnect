@@ -4,3 +4,6 @@
 [submodule "public/tf2sdk"]
 	path = public/tf2sdk
 	url = https://github.com/ValveSoftware/source-sdk-2013
+[submodule "public/segvcatch"]
+	path = public/segvcatch
+	url = https://github.com/Plaristote/segvcatch

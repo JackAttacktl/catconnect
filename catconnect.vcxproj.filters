@@ -116,6 +116,9 @@
     <ClCompile Include="core\cmdwrapper.cpp">
       <Filter>Source\core</Filter>
     </ClCompile>
+    <ClCompile Include="public\segvcatch\lib\segvcatch.cpp">
+      <Filter>Source\sdk</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="public\globalvars_base.h">

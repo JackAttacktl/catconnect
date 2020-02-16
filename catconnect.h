@@ -31,6 +31,7 @@ public:
 	static ECatState FASTERCALL GetClientState(int iClient);
 	static inline Color GetDeathNoticeColorFromStack() { if (!ms_vColors.size()) return Color(0, 0, 0, 0); Color cRet = ms_vColors[0]; ms_vColors.erase(ms_vColors.begin()); return cRet; }
 	static void FASTERCALL OnDeathNoticePaintPre(void * pThis);
+	static inline void SetVoteState(unsigned int iValue = 0) { ms_iCurrentVoteChoice = iValue; }
 
 private:
 	class CAchievementListener : public IGameEventListener2
@@ -63,6 +64,7 @@ private:
 	static inline Color GetClientColor(int iClient) { return GetStateColor(GetClientState(iClient)); }
 	static Color FASTERCALL GetStateColor(ECatState);
 	static bool FASTERCALL ShouldChangeColor(int iClient);
+	static void FASTERCALL NotifyCat(int iClient);
 
 	static void LoadSavedCats();
 	static void SaveCats();
@@ -75,6 +77,7 @@ private:
 	static bool ms_bJustJoined;
 	static std::map<uint32_t, uint8_t> ms_mIsCat;
 	static std::vector<Color> ms_vColors;
+	static unsigned int ms_iCurrentVoteChoice;
 };
 
 class CCatConnectExpose : public ICatConnect

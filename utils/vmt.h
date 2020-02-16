@@ -2,7 +2,7 @@
 	Virtual Member Table Functions Manager
 
 	Author: bluecutty
-	This is x86 windows only! (cuz tf2 binaries has x86 bit capacity)
+	This is x86 only! (cuz tf2 binaries has x86 bit capacity)
 
 	Todo:
 	Virtual Member Table manager (easy) - Done
@@ -15,11 +15,7 @@
 		Implement FindInterfaceThisPointer function (and custom dyncast) (easy) - Done
 	Add support to hook member function by its name (ala HookFunction(ThisPointer, Class, FuncName, Callback)) (easy) - WIP, 50% done but can be used already
 	Find function offset from its signature (easy)
-	Add inline hooks (ala detours) support (easy)
-	Add vectored EH hooks support (easy)
-	Add VW hooks support (easy)
-	Add import table hooks support (is this even needed?) (easy)
-	Port it to linux (HARD I guess because I don't know how GCC / Clang linux compilers implement some things :C)
+	Port it to linux - WIP (90%, I need to recheck some things to make sure everything implemented correctly)
 */
 
 #ifndef __VMT_INC
@@ -28,29 +24,38 @@
 #ifdef _WIN32
 #include <Windows.h>
 #include "lazy.h"
-#else //linux, todo
+#include <boost/algorithm/string.hpp>
+//disable stupid warnings
+#pragma warning (disable : 4996)
+#pragma warning (disable : 4200)
+#pragma warning (disable : 4700)
+#else //linux todo
 #include <cxxabi.h>
+#include <stdexcept>
+#include <segvcatch.h> //https://code.google.com/archive/p/segvcatch/
+#include <sys/mman.h>
+#include <signal.h>
+#include <stdlib.h>
+#ifndef PAGESIZE_X86
+#define	PAGESIZE_X86 4096 //memory page size always 4096 in x86
+#endif
+#define ALIGN(alig) (((int)alig) & ~(PAGESIZE_X86 - 1))
+//also redefine thiscall in linux
+#define __thiscall
 #endif
 #include <stdint.h>
 #include <map>
 #include <vector>
 #include <string>
 #include "xorstr.h"
-#include <boost/algorithm/string.hpp>
-
-//disable stupid warnings
-#pragma warning (disable : 4996)
-#pragma warning (disable : 4200)
-#pragma warning (disable : 4700)
 
 #define CALL_VFUNC_OFFS(funcdef, vthis, offset) ((funcdef)((*(void ***)vthis)[offset]))
 #define CALL_VFUNC_NAME(instance, name) (instance->*name)
 #define VMT_NOATTRIBS
-//#define GET_IFACE_PTR(var) __asm mov var, ecx
 
 namespace NSUtils
 {
-	//RTTI functions and structs (x86 and Windows only cuz source engine libraries in tf2 are x86)
+	//RTTI functions and structs (x86 only cuz source engine libraries in tf2 are x86)
 	//Here we can work with rtti information: check class parents, check class name, etc
 	//If you need x64 one you can do it by yourself
 	//In linux it works similar, but there it will be __class_type_info blah blah blah
@@ -59,6 +64,7 @@ namespace NSUtils
 
 	namespace NSRTTI
 	{
+#ifdef _WIN32
 #pragma pack(push, 1)
 		struct STypeInfo
 		{
@@ -68,7 +74,6 @@ namespace NSUtils
 		};
 
 		constexpr uint32_t MIN_TYPE_INFO_SIZE = (offsetof(STypeInfo, _M_d_name) + sizeof(".?AVx"));
-		typedef STypeInfo _TypeDescriptor;
 		typedef STypeInfo _RTTITypeDescriptor;
 
 		//Base class "Pointer to Member Data"
@@ -92,7 +97,7 @@ namespace NSUtils
 		{
 			_RTTITypeDescriptor * m_pTypeDescriptor;					// 00 Type descriptor of the class
 			uint32_t m_uNumContainedBases;								// 04 Number of nested classes following in the Base Class Array
-			PMD  m_pmd;													// 08 Pointer-to-member displacement info
+			PMD m_pmd;													// 08 Pointer-to-member displacement info
 			uint32_t m_uAttributes;										// 14 Flags
 		};
 
@@ -124,6 +129,75 @@ namespace NSUtils
 			_RTTIClassHierarchyDescriptor * m_pClassDescriptor;			// 10 (_RTTIClassHierarchyDescriptor *) Describes inheritance hierarchy
 		};
 #pragma pack(pop)
+#elif defined __linux__ //experimental, might be wrong
+#pragma pack(push)
+#pragma pack(1)
+
+		/*
+			vtables in linux looks kinda different:
+				`offset to complete this (0)`
+				`rtti data`
+				somefunc1
+				somefunc2
+				`offset to complete this (n)`
+				`rtti data`
+				somefunc3
+				somefunc4
+			https://i.imgur.com/cFuyEKF.png
+			So to dyn cast this pointer to some interface you need check rtti data and find needed interface, after this do this + RTTI_GET_OFFSET(attrs)
+			To cast to complete class you need simply do this (interface this) + (*this)[-2] and you are done
+		*/
+
+#define RTTI_GET_FLAGS(attributes) (attributes & 0xFF)
+#define RTTI_GET_OFFSET(attributes) (attributes >> 8)
+#define RTTI_IS_MULTICLASS(flags) (flags <= (MBCF_REPEAT_BASE | MBCF_AMBIGUOUS | MBCF_IDK_SUPERCOOL))
+
+		//possible flags of _RTTIMultiBaseClass. All info got from ida so this might be incorrect
+		constexpr uint32_t MBCF_REPEAT_BASE = 0x1;						// Not sure but some classes like IClientEntity has it
+		constexpr uint32_t MBCF_AMBIGUOUS = 0x2;						// Same as CHD_AMBIGUOUS in msvc rtti
+		constexpr uint32_t MBCF_IDK_SUPERCOOL = 0x10;					// Idk what it means
+
+		//possible flags of _RTTIMultiBaseClassesTypeInfo. All info again got from ida =|
+		constexpr uint8_t MBCTIF_VIRTUAL = 0x1;							// Virtual inherit
+		constexpr uint8_t MBCTIF_PUBLIC = 0x2;							// Public inherit
+		constexpr uint8_t MBCTIF_IDK_SUPERCOOL = 0x8;					// Idk what it means
+
+		struct STypeInfo
+		{
+			void * m_pCXXABIVTable;										// 00 Don't touch, this is actually cxxabi type_info vtable
+			const char * m_pMangledClassName;							// 04 Mangled classname
+		};
+
+		typedef STypeInfo _RTTITypeDescriptor;
+
+		struct _RTTIMultiBaseClassesTypeInfo
+		{
+			_RTTITypeDescriptor * m_pBaseClass;							// 00 Base class type info
+			int m_iAttributes;											// 04 Contains offset and flags
+		};
+
+		union _RTTISharedBaseClass
+		{
+			struct _RTTISingleBaseClass : public _RTTITypeDescriptor	// Class without bases (si)
+			{
+				_RTTITypeDescriptor * m_pBaseClass;						// 08 Base class type info
+			} m_SingleClass;
+
+			struct _RTTIMultiBaseClass : public _RTTITypeDescriptor		// Multi base class (vmi)
+			{
+				uint32_t m_uFlags;										// 08 Some flags
+				uint32_t m_uNumBases;									// 0C Count of base classes
+				_RTTIMultiBaseClassesTypeInfo m_SBases[1];				// 10 Base classes array, array size == m_uNumBases
+			} m_MultiClass;
+		};
+
+		struct _RTTIWholeInfo
+		{
+			int m_iCompleteOffset;										// 00 Offset to complete this, always negative
+			_RTTISharedBaseClass * m_pSharedClass;						// 04 pointer to shared base class
+		};
+#pragma pack(pop)
+#endif
 	}
 
 	class CVirtualMemberTableMan
@@ -202,6 +276,7 @@ namespace NSUtils
 
 		template<typename TFunc = void *> inline TFunc GetOriginalFunction(const unsigned int iIndex)
 		{
+			if (!m_bValidHook) return (TFunc)nullptr;
 			if (m_mHookedFunctions.find(iIndex) != m_mHookedFunctions.end())
 				return reinterpret_cast<TFunc>(m_mHookedFunctions[iIndex]);
 			return reinterpret_cast<TFunc>(GetVTable()[iIndex]);
@@ -209,29 +284,54 @@ namespace NSUtils
 
 		inline void HookFunction(void * pFunc, const unsigned int iIndex)
 		{
+			if (!m_bValidHook)
+				return;
 			if (iIndex <= m_iSize && iIndex >= 0)
 			{
 				if (m_mHookedFunctions.find(iIndex) != m_mHookedFunctions.end())
 					UnhookFunction(iIndex);
+#ifdef _WIN32
 				DWORD dwPrevProtection = 0;
 				LI_FN(VirtualProtect)((LPVOID)&(GetVTable()[iIndex]), sizeof(void *), PAGE_EXECUTE_READWRITE, &dwPrevProtection);
+#else //linux
+				void * pAddr = (void *)ALIGN(&(GetVTable()[iIndex]));
+				mprotect(pAddr, sysconf(_SC_PAGESIZE), PROT_READ | PROT_WRITE | PROT_EXEC);
+#endif
 				m_mHookedFunctions[iIndex] = GetVTable()[iIndex];
 				GetVTable()[iIndex] = pFunc;
+#ifdef _WIN32
 				LI_FN(VirtualProtect)((LPVOID)&(GetVTable()[iIndex]), sizeof(void *), dwPrevProtection, (PDWORD)NULL);
+#else //linux
+				//we modified .rodata section, it was read only (ro), so restore old protection
+				mprotect(pAddr, sysconf(_SC_PAGESIZE), PROT_READ);
+#endif
 			}
 		}
 
 		inline void UnhookFunction(const unsigned int iIndex)
 		{
+			if (!m_bValidHook)
+				return;
 			if (iIndex <= m_iSize && iIndex >= 0)
 			{
 				if (m_mHookedFunctions.find(iIndex) == m_mHookedFunctions.end())
 					return;
+#ifdef _WIN32
 				DWORD dwPrevProtection = 0;
 				LI_FN(VirtualProtect)((LPVOID)&(GetVTable()[iIndex]), sizeof(void *), PAGE_EXECUTE_READWRITE, &dwPrevProtection);
+#else //linux
+				//in linux we must align address before modify: http://man7.org/linux/man-pages/man2/mprotect.2.html
+				void * pAddr = (void *)ALIGN(&(GetVTable()[iIndex]));
+				mprotect(pAddr, sysconf(_SC_PAGESIZE), PROT_READ | PROT_WRITE | PROT_EXEC);
+#endif
 				GetVTable()[iIndex] = m_mHookedFunctions[iIndex];
 				m_mHookedFunctions.erase(m_mHookedFunctions.find(iIndex));
+#ifdef _WIN32
 				LI_FN(VirtualProtect)((LPVOID)&(GetVTable()[iIndex]), sizeof(void *), dwPrevProtection, (PDWORD)NULL);
+#else //linux
+				//we modified .rodata section, it was read only (ro), so restore old protection
+				mprotect(pAddr, sysconf(_SC_PAGESIZE), PROT_READ);
+#endif
 			}
 		}
 
@@ -283,6 +383,7 @@ namespace NSUtils
 
 		static inline const char * UndecorateClassName(const char * pDecorated)
 		{
+#ifdef _WIN32
 			if (strncmp(pDecorated, xorstr_(".?AV"), 4) && strncmp(pDecorated, xorstr_(".?AU"), 4))
 				return pDecorated;
 			static char s_cOut[256];
@@ -305,8 +406,23 @@ namespace NSUtils
 				}
 			}
 			return s_cOut;
+#else //linux
+			//https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling
+			//Not sure about this
+			static char cFullDecorated[256];
+			cFullDecorated[0] = 0;
+			if (strncmp(pDecorated, xorstr_("_ZTS"), 4))
+				strcpy(cFullDecorated, xorstr_("_ZTS"));
+			strcat(cFullDecorated, pDecorated);
+			int iStatus = 0;
+			const char * pUndecoratedName = abi::__cxa_demangle(cFullDecorated, nullptr, 0, &iStatus); //FIXME: Potential memory leak! Should we free allocated memory? We need to check it.
+			if (iStatus) //must be zero. -1 == fail to allocate memory, -2 == invalid decorated name
+				return pDecorated;
+			return pUndecoratedName;
+#endif
 		}
 
+#ifdef _WIN32
 		static inline NSRTTI::_RTTICompleteObjectLocator * GetRTTILocator(void ** pVTable)
 		{
 			NSRTTI::_RTTICompleteObjectLocator * pRTTILocator = nullptr;
@@ -314,14 +430,28 @@ namespace NSUtils
 			__except (EXCEPTION_EXECUTE_HANDLER) { return nullptr; }
 			return pRTTILocator;
 		}
-
+#else //linux
+		static inline NSRTTI::_RTTIWholeInfo * GetRTTIWholeInfo(void ** pVTable)
+		{
+			//check vtable for being valid
+			InstallSegvCatcher();
+			try { volatile void * pTemp = (volatile void *)pVTable[-1]; /*not a mistake*/ }
+			catch (std::exception & e) { DeinstallSegvCatcher(); return nullptr; }
+			DeinstallSegvCatcher();
+			NSRTTI::_RTTIWholeInfo * pRTTIWholeInfo = (NSRTTI::_RTTIWholeInfo *)&pVTable[-2];
+			return pRTTIWholeInfo;
+		}
+#endif
+		
 		static inline bool DoRTTICheck(void *** pThis, const char * pPotentialClassName)
 		{
+			if (!pThis) return false;
 			void ** pVTable = *pThis;
 			if (!pVTable) return false;
+			const char * pClassName = nullptr;
+#ifdef _WIN32
 			NSRTTI::_RTTICompleteObjectLocator * pRTTILocator = GetRTTILocator(pVTable);
 			if (!pRTTILocator) return false;
-			const char * pClassName = nullptr;
 			__try
 			{
 				NSRTTI::_RTTIClassHierarchyDescriptor * pRTTIHierDesc = pRTTILocator->m_pClassDescriptor;
@@ -331,6 +461,19 @@ namespace NSUtils
 				pClassName = &pDescriptor->_M_d_name[0];
 			}
 			__except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+#else //linux
+			NSRTTI::_RTTIWholeInfo * pRTTIWholeInfo = GetRTTIWholeInfo(pVTable);
+			if (!pRTTIWholeInfo) return false;
+			InstallSegvCatcher();
+			try
+			{
+				NSRTTI::_RTTISharedBaseClass * pSharedClass = pRTTIWholeInfo->m_pSharedClass;
+				pClassName = pSharedClass->m_pMangledClassName;
+				volatile char ch = (volatile char)*pClassName; //check name for being valid
+			}
+			catch (std::exception & e) { DeinstallSegvCatcher(); return false; }
+			DeinstallSegvCatcher();
+#endif
 			if (pClassName && *pClassName)
 				return !strcmp(UndecorateClassName(pClassName), pPotentialClassName);
 			return false;
@@ -339,8 +482,10 @@ namespace NSUtils
 		//didn't tested yet
 		static inline bool IsChildOf(void *** pThis, const char * pPotentialParent)
 		{
+			if (!pThis) return false;
 			void ** pVTable = *pThis;
 			if (!pVTable) return false;
+#ifdef _WIN32
 			NSRTTI::_RTTICompleteObjectLocator * pRTTILocator = GetRTTILocator(pVTable);
 			if (!pRTTILocator) return false;
 			NSRTTI::_RTTIBaseClassArray * pClassArr = nullptr;
@@ -365,13 +510,39 @@ namespace NSUtils
 				}
 				__except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 			}
+#else //linux
+			NSRTTI::_RTTIWholeInfo * pRTTIWholeInfo = GetRTTIWholeInfo(pVTable);
+			if (!pRTTIWholeInfo) return false;
+			InstallSegvCatcher();
+			try
+			{
+				if (RTTI_IS_MULTICLASS(pRTTIWholeInfo->m_pSharedClass->m_MultiClass.m_uFlags))
+				{
+					for (uint32_t iClass = 0; iClass < pRTTIWholeInfo->m_pSharedClass->m_MultiClass.m_uNumBases; iClass++)
+					{
+						NSRTTI::_RTTIMultiBaseClassesTypeInfo * pBaseClass = (((char *)&pRTTIWholeInfo->m_pSharedClass->m_MultiClass.m_SBases[0]) + sizeof(NSRTTI::_RTTIMultiBaseClassesTypeInfo) * iClass);
+						const char * pClassName = pBaseClass->m_pBaseClass->m_pMangledClassName;
+						if (pClassName && *pClassName && !strcmp(UndecorateClassName(pClassName), pPotentialParent))
+						{
+							DeinstallSegvCatcher();
+							return true;
+						}
+					}
+				}
+			}
+			catch (std::exception & e) { DeinstallSegvCatcher(); return false; }
+			DeinstallSegvCatcher();
+#endif
 			return false;
 		}
-
+		
+		//Note: This returns rtti class string of complete class both in linux and windows
 		static inline const char * GetRTTIClass(void *** pThis)
 		{
+			if (!pThis) return "";
 			void ** pVTable = *pThis;
 			if (!pVTable) return "";
+#ifdef _WIN32
 			NSRTTI::_RTTICompleteObjectLocator * pRTTILocator = GetRTTILocator(pVTable);
 			if (!pRTTILocator) return "";
 			const char * pClassName = nullptr;
@@ -386,6 +557,23 @@ namespace NSUtils
 			__except (EXCEPTION_EXECUTE_HANDLER) { return ""; }
 			if (pClassName && *pClassName)
 				return UndecorateClassName(pClassName);
+#else //linux
+			NSRTTI::_RTTIWholeInfo * pRTTIWholeInfo = GetRTTIWholeInfo(pVTable);
+			if (!pRTTIWholeInfo) return "";
+			InstallSegvCatcher();
+			try
+			{
+				NSRTTI::_RTTISharedBaseClass * pSharedClass = pRTTIWholeInfo->m_pSharedClass;
+				const char * pClassName = pSharedClass->m_pMangledClassName;
+				if (pClassName && *pClassName)
+				{
+					DeinstallSegvCatcher();
+					return UndecorateClassName(pClassName);
+				}
+			}
+			catch (std::exception & e) { DeinstallSegvCatcher(); return ""; }
+			DeinstallSegvCatcher();
+#endif
 			return "";
 		}
 
@@ -395,8 +583,10 @@ namespace NSUtils
 		//These functions allow to cast from void * and provide proper pointers
 		static inline void *** FindCompleteThisPointer(void *** pInterfaceThis)
 		{
+			if (!pInterfaceThis) return nullptr;
 			void ** pVTable = *pInterfaceThis;
 			if (!pVTable) return nullptr;
+#ifdef _WIN32
 			NSRTTI::_RTTICompleteObjectLocator * pRTTILocator = GetRTTILocator(pVTable);
 			if (!pRTTILocator) return nullptr;
 			if (pRTTILocator->m_uOffset == 0) return pInterfaceThis; //interface this is actually complete this
@@ -421,13 +611,22 @@ namespace NSUtils
 			}
 			__except (EXCEPTION_EXECUTE_HANDLER) { return nullptr; }
 			return pCastedThis;
+#else //linux
+			NSRTTI::_RTTIWholeInfo * pRTTIWholeInfo = GetRTTIWholeInfo(pVTable);
+			if (!pRTTIWholeInfo || pRTTIWholeInfo->m_iCompleteOffset > 0) return nullptr; //invalid rtti data
+			if (pRTTIWholeInfo->m_iCompleteOffset == 0) return pInterfaceThis; //interface this is actually complete this
+			void *** pCastedThis = (void ***)((char *)pInterfaceThis + pRTTIWholeInfo->m_iCompleteOffset);
+			return pCastedThis;
+#endif
 		}
 
 		static inline void *** FindInterfaceThisPointer(void *** pCompleteThis, const char * pInterfaceName)
 		{
+			if (!pCompleteThis) return nullptr;
 			if (!pInterfaceName || !*pInterfaceName) return nullptr;
 			void ** pVTable = *pCompleteThis;
 			if (!pVTable) return nullptr;
+#ifdef _WIN32
 			NSRTTI::_RTTICompleteObjectLocator * pRTTILocator = GetRTTILocator(pVTable);
 			if (pRTTILocator->m_uOffset) //must be 0
 			{
@@ -469,6 +668,41 @@ namespace NSUtils
 				}
 				__except (EXCEPTION_EXECUTE_HANDLER) { return nullptr; }
 			}
+#else //linux
+			NSRTTI::_RTTIWholeInfo * pRTTIWholeInfo = GetRTTIWholeInfo(pVTable);
+			if (!pRTTIWholeInfo || pRTTIWholeInfo->m_iCompleteOffset > 0) return nullptr; //invalid rtti data
+			if (pRTTIWholeInfo->m_iCompleteOffset) //must be 0
+			{
+				pCompleteThis = FindCompleteThisPointer(pCompleteThis);
+				if (!pCompleteThis) return nullptr;
+				//do it again
+				pVTable = *pCompleteThis;
+				if (!pVTable) return nullptr;
+				pRTTIWholeInfo = GetRTTIWholeInfo(pVTable);
+			}
+
+			InstallSegvCatcher();
+			try
+			{
+				if (RTTI_IS_MULTICLASS(pRTTIWholeInfo->m_pSharedClass->m_MultiClass.m_uFlags))
+				{
+					for (uint32_t iClass = 0; iClass < pRTTIWholeInfo->m_pSharedClass->m_MultiClass.m_uNumBases; iClass++)
+					{
+						NSRTTI::_RTTIMultiBaseClassesTypeInfo * pBaseClass = (((char *)&pRTTIWholeInfo->m_pSharedClass->m_MultiClass.m_SBases[0]) + sizeof(NSRTTI::_RTTIMultiBaseClassesTypeInfo) * iClass);
+						const char * pClassName = pBaseClass->m_pBaseClass->m_pMangledClassName;
+						if (pClassName && *pClassName && !strcmp(UndecorateClassName(pClassName), pPotentialParent))
+						{
+							int iOffset = RTTI_GET_OFFSET(pBaseClass->m_pBaseClass.m_iAttributes);
+							void *** pCastedThis = (void ***)((char *)pCompleteThis + iOffset);
+							DeinstallSegvCatcher();
+							return pCastedThis;
+						}
+					}
+				}
+			}
+			catch (std::exception & e) { DeinstallSegvCatcher(); return nullptr; }
+			DeinstallSegvCatcher();
+#endif
 			return nullptr;
 		}
 
@@ -478,9 +712,15 @@ namespace NSUtils
 			void ** pVTable = *pThis;
 			if (!pVTable)
 				return nullptr;
+#ifdef _WIN32
 			NSRTTI::_RTTICompleteObjectLocator * pRTTILocator = GetRTTILocator(pVTable);
 			if (!pRTTILocator) return nullptr;
 			if (pRTTILocator->m_uOffset == 0)
+#else //linux
+			NSRTTI::_RTTIWholeInfo * pRTTIWholeInfo = GetRTTIWholeInfo(pVTable);
+			if (!pRTTIWholeInfo) return nullptr;
+			if (pRTTIWholeInfo->m_iCompleteOffset == 0)
+#endif
 			{
 				if (!pCastTo || !*pCastTo)
 					return pThis;
@@ -520,6 +760,7 @@ namespace NSUtils
 			if (!pFunc)
 				return;
 
+#ifdef _WIN32
 			int iSize = sizeof(pFunc) / sizeof(void *);
 
 			switch (iSize)
@@ -638,18 +879,44 @@ namespace NSUtils
 				else
 					pInfo->m_bIsValid = false;
 			}
+#else //linux
+			struct SABIFuncInfo
+			{
+				union
+				{
+					void * m_pFunc;
+					int m_iVTableOffsetAdjusted;
+				};
+
+				int m_iDelta;
+			};
+
+			SABIFuncInfo * pFuncInfo = (SABIFuncInfo *)&pFunc;
+			
+			if (pFuncInfo->m_iVTableOffsetAdjusted & 1)
+			{
+				pInfo->m_bIsValid = true;
+				pInfo->m_iFuncOffset = (pFuncInfo->m_iVTableOffsetAdjusted - 1) / sizeof(void *);
+				pInfo->m_iVTableOffset = pFuncInfo->m_iDelta;
+			}
+#endif
 		}
 
 	private:
 		static inline bool IsValidFunction(void * pFunc)
 		{
+#ifdef _WIN32
 			MEMORY_BASIC_INFORMATION sInfo;
 			LI_FN(VirtualQuery)(pFunc, &sInfo, sizeof(sInfo));
 			return sInfo.Type && !(sInfo.Protect & (PAGE_GUARD | PAGE_NOACCESS)) && sInfo.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY);
+#else //linux
+			return true;
+#endif
 		}
 
 		static inline bool IsObjectPointerValid(void * pObject) //only for polymorphic objects (objects with atleast 1 virtual function)
 		{
+#ifdef _WIN32
 			//here we check if pointer to object is valid
 			//ofc we can use MmCopyVirtualMemory, RtlCopyMemory && region size check, rtti veryfication, etc., but method below a lot simplier and faster
 			//this is windows only!
@@ -660,10 +927,46 @@ namespace NSUtils
 				if (!pVtableFunc) return false;
 			}
 			__except (EXCEPTION_EXECUTE_HANDLER) { return false; } //Catch sigsegv: https://en.wikipedia.org/wiki/SIGSEGV
-			//also if you want to catch sigsegv in linux, you need to use posix signals handlers.
-			//you also can use this library: https://code.google.com/archive/p/segvcatch/ to catch it with c++ try {} catch(...) {} construction
+#else //linux
+			InstallSegvCatcher();
+			volatile void * pVtableFunc = nullptr;
+			try
+			{
+				pVtableFunc = **(volatile void ***)pObject;
+				if (!pVtableFunc) { DeinstallSegvCatcher(); return false; }
+			}
+			catch (std::exception & e) { DeinstallSegvCatcher(); return false; }
+			DeinstallSegvCatcher();
+#endif
 			return !!*GetRTTIClass((void ***)pObject); //check rtti info
 		}
+
+#ifdef __linux__
+		static inline void SigSegvCatcher()
+		{
+			if (ms_iInstallsCounter > 0)
+				throw std::exception(xorstr_("Hello I'm sigsegv catch me tf"));
+			else
+				exit(SIGSEGV);
+		}
+
+		static inline void InstallSegvCatcher()
+		{
+			if (!ms_bSegvCatcherInstalled)
+			{
+				//install it once
+				segvcatch::init_segv(&CVirtualMemberTableMan::SigSegvCatcher);
+				ms_bSegvCatcherInstalled = true;
+			}
+			ms_iInstallsCounter++;
+		}
+
+		static inline void DeinstallSegvCatcher() { ms_iInstallsCounter--; if (ms_iInstallsCounter < 0) ms_iInstallsCounter = 0; }
+
+	private:
+		static bool ms_bSegvCatcherInstalled; //declared in global.cpp
+		static int ms_iInstallsCounter;
+#endif
 
 	public:
 		void *** m_pThis = nullptr;
