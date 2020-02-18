@@ -249,6 +249,14 @@ bool CHooksMan::DispatchUserMessage(IBaseClientDLL * pThis, void * pDumbArg, int
 
 	switch (iMessageID)
 	{
+		case 45:
+		{
+			int iReason = pBFMessage->ReadByte();
+			int iSeconds = pBFMessage->ReadShort();
+			bCallOriginal = !CCatConnect::IsVotingBack(iReason, iSeconds);
+			pBFMessage->Seek(0);
+			break;
+		}
 		case 46:
 		{
 			int iTeam = pBFMessage->ReadByte();

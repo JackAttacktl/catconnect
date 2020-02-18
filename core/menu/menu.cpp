@@ -13,7 +13,7 @@
 #include "settings/settings.h"
 #include "inputsystem/iinputsystem.h"
 
-NSMenu::CMenu::CMenu() : m_bEnabled(false), m_bIsOnDrag(false), m_pMouse{ 0, 0 }, m_pPrevMouse{ 0, 0 }, m_pMyPosition{ 100, 100 }, m_pMyScale{ 208, 510 }, m_EMouseButton(EMouseButton::MB_None), m_iKey(BUTTON_CODE_NONE)
+NSMenu::CMenu::CMenu() : m_bEnabled(false), m_bIsOnDrag(false), m_pMouse{ 0, 0 }, m_pPrevMouse{ 0, 0 }, m_pMyPosition{ 100, 100 }, m_pMyScale{ 208, 530 }, m_EMouseButton(EMouseButton::MB_None), m_iKey(BUTTON_CODE_NONE)
 {
 	m_pMyStyle = new CDefaultStyle();
 	m_pTabs = new CTabGroup(this);
@@ -46,7 +46,7 @@ void NSMenu::CMenu::CreateGUI()
 				}, GROUP_DEFAULT_WIDTH),
 			new CGroupBox(this, xorstr_("Votekicks"),
 				{
-					new CCheckBox(this, xorstr_("Manage votekicks"), xorstr_("catconnect.votekicks.manage")),
+					new CListBox(this, xorstr_("Manage votekicks"), xorstr_("catconnect.votekicks.manage"), { xorstr_("Don't manage"), xorstr_("Vote only"), xorstr_("Vote and call votes") }),
 					new CListBox(this, xorstr_("Show voters"), xorstr_("catconnect.votekicks.partychat.notifyvoters"), { xorstr_("Don't show"), xorstr_("All"), xorstr_("Against only") })
 				}, GROUP_DEFAULT_WIDTH),
 			new CGroupBox(this, xorstr_("Scoreboard"),

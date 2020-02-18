@@ -32,6 +32,7 @@ public:
 	static inline Color GetDeathNoticeColorFromStack() { if (!ms_vColors.size()) return Color(0, 0, 0, 0); Color cRet = ms_vColors[0]; ms_vColors.erase(ms_vColors.begin()); return cRet; }
 	static void FASTERCALL OnDeathNoticePaintPre(void * pThis);
 	static inline void SetVoteState(unsigned int iValue = 0) { ms_iCurrentVoteChoice = iValue; }
+	static bool FASTERCALL IsVotingBack(int iReason, int iSeconds);
 
 private:
 	class CAchievementListener : public IGameEventListener2
@@ -58,13 +59,15 @@ private:
 	static bool OnAuthTimer(NSUtils::ITimer * pTimer, void * pData);
 	static bool OnFakeAuthTimer(NSUtils::ITimer * pTimer, void * pData);
 	static bool OnVoteTimer(NSUtils::ITimer * pTimer, void * pData);
+	static bool OnBackVoteTimer(NSUtils::ITimer * pTimer, void * pData);
 	static void FASTERCALL SendCatMessage(int iMessage);
-	static uint8_t FASTERCALL IsCat(int iIndex);
+	static uint8_t FASTERCALL GetSavedState(int iIndex);
 	static bool FASTERCALL InSameParty(int iIndex);
 	static inline Color GetClientColor(int iClient) { return GetStateColor(GetClientState(iClient)); }
 	static Color FASTERCALL GetStateColor(ECatState);
 	static bool FASTERCALL ShouldChangeColor(int iClient);
 	static void FASTERCALL NotifyCat(int iClient);
+	static void FASTERCALL MarkAsToVoteBack(uint32_t iSteamID3);
 
 	static void LoadSavedCats();
 	static void SaveCats();
@@ -75,9 +78,11 @@ private:
 	static CPlayerListener ms_GameEventPlayerListener;
 	static CVoteListener ms_GameEventVoteCastListener;
 	static bool ms_bJustJoined;
-	static std::map<uint32_t, uint8_t> ms_mIsCat;
+	static std::map<uint32_t, uint8_t> ms_mSavedCatState;
 	static std::vector<Color> ms_vColors;
 	static unsigned int ms_iCurrentVoteChoice;
+	static NSUtils::ITimer * ms_pVotingBackTimer;
+	static bool ms_bIsVotingBack;
 };
 
 class CCatConnectExpose : public ICatConnect

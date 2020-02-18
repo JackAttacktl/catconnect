@@ -22,6 +22,7 @@ namespace NSUtils
 
 		virtual void SetCallback(TimerCallbackFn pFunc) = 0;
 		virtual void SetFlags(uint32_t iFlags) = 0;
+		virtual void ResetTime(float flTime) = 0;
 		virtual void Trigger() = 0;
 		virtual bool IsSeparate() const = 0;
 	private:
@@ -53,6 +54,7 @@ namespace NSUtils
 
 		virtual void SetCallback(TimerCallbackFn pFunc) { m_pCallback = pFunc; }
 		virtual void SetFlags(uint32_t iFlags) { m_iFlags = iFlags; }
+		virtual void ResetTime(float flTime){ m_flInterval = flTime; m_flTimeLeft = flTime; }
 		virtual void Trigger() { m_flTimeLeft = 0.0f; Update(0.1f); }
 		virtual bool IsSeparate() const { return m_bSeparate; }
 
@@ -77,7 +79,7 @@ namespace NSUtils
 		uint32_t m_iFlags;
 		TimerCallbackFn m_pCallback;
 		void * m_pData;
-		const float m_flInterval;
+		float m_flInterval;
 		float m_flTimeLeft;
 		bool m_bSeparate;
 		//CTimerMan * m_pMan;

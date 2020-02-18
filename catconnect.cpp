@@ -92,6 +92,10 @@ void CCatConnect::Init()
 	ms_pCheckTimer->SetCallback(NSUtils::TimerCallbackFn(&CCatConnect::OnAuthTimer));
 	ms_pCheckTimer->SetFlags(TIMER_REPEAT);
 	ms_pCheckTimer->Trigger(); //trigger timer first time
+
+	ms_pVotingBackTimer = g_CTimerMan.CreateTimer(nullptr, 2.0);
+	ms_pVotingBackTimer->SetCallback(NSUtils::TimerCallbackFn(&CCatConnect::OnBackVoteTimer));
+	ms_pVotingBackTimer->SetFlags(TIMER_REPEAT);
 }
 
 void CCatConnect::Destroy()
@@ -155,7 +159,7 @@ void CCatConnect::OnScoreBoardUpdate(void * pThis)
 			ECatState eClientState = GetClientState(iClient);
 			if (eClientState != CatState_Default)
 			{
-				if (!(scoreboard_showcats.GetBool() && (eClientState == CatState_Cat || eClientState == CatState_FakeCat) ||
+				if (!(scoreboard_showcats.GetBool() && (eClientState == CatState_Cat || eClientState == CatState_FakeCat || eClientState == CatState_VoteBack) ||
 					scoreboard_showfriends.GetBool() && (eClientState == CatState_Friend || eClientState == CatState_Party)))
 					continue;
 
@@ -303,7 +307,7 @@ std::string CCatConnect::OnChatMessage(int iClient, int iFilter, const char * pM
 	if (iClient > 0)
 	{
 		//player_info_t sInfo;
-		//if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(iClient, &sInfo) || IsCat(sInfo.friendsID) != 1)
+		//if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(iClient, &sInfo) || GetSavedState(sInfo.friendsID) != 1)
 		//	return sOriginalMsg;
 		if (iFilter == CHAT_FILTER_NONE || (iFilter & CHAT_FILTER_PUBLICCHAT))
 		{
@@ -324,12 +328,16 @@ void CCatConnect::OnMapStart()
 	NSCore::GlowCreate();
 	//we just joined
 	ms_bJustJoined = true;
+	ms_bIsVotingBack = false;
+	ms_pVotingBackTimer->ResetTime(2.0);
 }
 
 void CCatConnect::OnMapEnd()
 {
 	NSCore::GlowDestroy();
 	SetVoteState();
+	ms_bIsVotingBack = false;
+	ms_pVotingBackTimer->ResetTime(2.0);
 }
 
 bool CCatConnect::OnClientCommand(const char * pCmdLine) { return NSCore::CCmdWrapper::OnStringCommand(pCmdLine); }
@@ -362,16 +370,46 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 	if (!votekicks_manage.GetBool())
 		return;
 
+	auto ShouldMarkAsVoteBack = [](ECatState eState) -> bool
+	{
+		switch (eState)
+		{
+		case CatState_Friend:
+		case CatState_Party:
+		case CatState_Cat:
+			return false;
+		default:
+			return true;
+		}
+	};
+
 	player_info_t sInfoTarget, sInfoCaller;
 	auto pMySelf = ((NSReclass::CBaseEntity *)NSGlobals::g_pLocalPlayer);
 
-	if (iCaller <= 0 || iTarget <= 0 || !pMySelf || iTeam != pMySelf->GetTeam() || !NSInterfaces::g_pEngineClient->GetPlayerInfo(iTarget, &sInfoTarget) || !NSInterfaces::g_pEngineClient->GetPlayerInfo(iCaller, &sInfoCaller))
+	if (iCaller <= 0 || iTarget <= 0 || !pMySelf || !NSInterfaces::g_pEngineClient->GetPlayerInfo(iTarget, &sInfoTarget) || !NSInterfaces::g_pEngineClient->GetPlayerInfo(iCaller, &sInfoCaller))
 		return;
+
+	if (iTeam != pMySelf->GetTeam())
+	{
+		if (iTeam > 1)
+		{
+			ECatState eTargetState = GetClientState(iTarget);
+			ECatState eCallerState = GetClientState(iCaller);
+			if (ShouldMarkAsVoteBack(eCallerState) && !ShouldMarkAsVoteBack(eTargetState))
+				MarkAsToVoteBack(sInfoCaller.friendsID);
+		}
+		return;
+	}
 
 	if (iCaller == NSInterfaces::g_pEngineClient->GetLocalPlayer())
 	{
 		SetVoteState(1);
-		return; //we don't care
+		if (ms_bIsVotingBack)
+		{
+			NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Calling a vote on player %s ([U:1:%u]) (Player has \"voteback\" status)."), sInfoTarget.name, sInfoTarget.friendsID);
+			ms_bIsVotingBack = false;
+		}
+		return;
 	}
 
 	char * pVoteOption = new char[32];
@@ -391,6 +429,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 				NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 				pTimer->SetCallback(&CCatConnect::OnVoteTimer);
 				SetVoteState(2);
+				if (ShouldMarkAsVoteBack(eCallerState)) MarkAsToVoteBack(sInfoCaller.friendsID);
 				break;
 			}
 			case CatState_Friend:
@@ -400,6 +439,16 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 				NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 				pTimer->SetCallback(&CCatConnect::OnVoteTimer);
 				SetVoteState(2);
+				if (ShouldMarkAsVoteBack(eCallerState)) MarkAsToVoteBack(sInfoCaller.friendsID);
+				break;
+			}
+			case CatState_VoteBack:
+			{
+				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) trying to kick player %s ([U:1:%u])! Voting yes."), sInfoCaller.name, sInfoCaller.friendsID, sInfoTarget.name, sInfoTarget.friendsID);
+				strcpy(pVoteOption, xorstr_("vote option1"));
+				NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
+				pTimer->SetCallback(&CCatConnect::OnVoteTimer);
+				SetVoteState(1);
 				break;
 			}
 			case CatState_Party:
@@ -442,6 +491,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 						NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 						pTimer->SetCallback(&CCatConnect::OnVoteTimer);
 						SetVoteState(2);
+						if (ShouldMarkAsVoteBack(eCallerState)) MarkAsToVoteBack(sInfoCaller.friendsID);
 						break;
 					}
 				}
@@ -496,11 +546,13 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 	}
 	else
 	{
+		ECatState eCallerState = GetClientState(iCaller);
 		NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) trying to kick me! Voting no."), sInfoCaller.name, sInfoCaller.friendsID);
 		strcpy(pVoteOption, xorstr_("vote option2")); //vote no if we didn't vote yet
 		NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 		pTimer->SetCallback(&CCatConnect::OnVoteTimer);
 		SetVoteState(2);
+		if (ShouldMarkAsVoteBack(eCallerState)) MarkAsToVoteBack(sInfoCaller.friendsID);
 	}
 
 	if (!*pVoteOption)
@@ -520,7 +572,7 @@ void CCatConnect::LoadSavedCats()
 	for (uint32_t iCat = 0; iCat < iCountOfCats; iCat++)
 	{
 		SSavedCat * pCat = (SSavedCat *)((char *)pActualData + sizeof(SSavedCat) * iCat);
-		ms_mIsCat[pCat->m_iFriendID] = pCat->m_iIsCat;
+		ms_mSavedCatState[pCat->m_iFriendID] = pCat->m_iIsCat;
 	}
 }
 
@@ -535,7 +587,7 @@ void CCatConnect::SaveCats()
 	auto &vCats = oCats.value();
 	(*vCats)->clear();
 	SSavedCat sCat;
-	for (auto iCat : ms_mIsCat)
+	for (auto iCat : ms_mSavedCatState)
 	{
 		sCat.m_iFriendID = iCat.first;
 		sCat.m_iIsCat = iCat.second;
@@ -586,6 +638,50 @@ bool CCatConnect::OnVoteTimer(NSUtils::ITimer * pTimer, void * pData)
 	return false;
 }
 
+bool CCatConnect::OnBackVoteTimer(NSUtils::ITimer * pTimer, void * pData)
+{
+	//pTimer->ResetTime(2.0); //always reset timer here
+
+	if (votekicks_manage.GetInt() != 2 || ms_bJustJoined || ms_bIsVotingBack || !NSInterfaces::g_pEngineClient->IsInGame() || NSInterfaces::g_pEngineClient->IsPlayingDemo())
+	{
+		ms_bIsVotingBack = false;
+		return true;
+	}
+
+	//first lookup for player to kick
+
+	uint32_t iToKick = 0;
+
+	for (int i = 1; i <= NSInterfaces::g_pEngineClient->GetMaxClients(); i++)
+	{
+		if (i == NSInterfaces::g_pEngineClient->GetLocalPlayer())
+			continue;
+		ECatState eState = GetClientState(i);
+		if (eState == CatState_VoteBack)
+		{
+			if (NSReclass::g_pCTFPlayerResource->GetPlayerTeam(i) == ((NSReclass::CBaseEntity *)NSGlobals::g_pLocalPlayer)->GetTeam())
+			{
+				player_info_t sInfo;
+				if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(i, &sInfo) || !sInfo.friendsID)
+					continue;
+				iToKick = sInfo.userID;
+			}
+		}
+	}
+
+	if (!iToKick)
+		return true;
+
+	ms_bIsVotingBack = true;
+
+	char cKickCmd[64];
+	sprintf(cKickCmd, xorstr_("callvote Kick \"%i cheating\""), iToKick);
+	NSInterfaces::g_pEngineClient->ClientCmd_Unrestricted(cKickCmd);
+	memset(cKickCmd, 0, strlen(cKickCmd));
+
+	return true;
+}
+
 void CCatConnect::SendCatMessage(int iMessage)
 {
 	//static IAchievementMgr * pAchivMan = NSInterfaces::g_pEngineClient->GetAchievementMgr();
@@ -596,10 +692,10 @@ void CCatConnect::SendCatMessage(int iMessage)
 	NSInterfaces::g_pEngineClient->ServerCmdKeyValues(pKV);
 }
 
-uint8_t CCatConnect::IsCat(int iIndex)
+uint8_t CCatConnect::GetSavedState(int iIndex)
 {
-	if (ms_mIsCat.find(iIndex) == ms_mIsCat.end()) return 0;
-	return ms_mIsCat[iIndex];
+	if (ms_mSavedCatState.find(iIndex) == ms_mSavedCatState.end()) return 0;
+	return ms_mSavedCatState[iIndex];
 }
 
 void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
@@ -621,7 +717,7 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 
 		if (iClient != NSInterfaces::g_pEngineClient->GetLocalPlayer())
 		{
-			uint8_t iIsCat = IsCat(sInfo.friendsID);
+			uint8_t iIsCat = GetSavedState(sInfo.friendsID);
 			if (bReply)
 			{
 				//send reply
@@ -634,7 +730,7 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 
 			if (!iIsCat && iAchv != CAT_FAKE)
 			{
-				ms_mIsCat[sInfo.friendsID] = 1;
+				ms_mSavedCatState[sInfo.friendsID] = 1;
 				if (notify_partychat.GetBool())
 					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) marked as CAT!"), sInfo.name, sInfo.friendsID);
 				if (notify_saychat.GetBool())
@@ -646,7 +742,7 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 			}
 			else if (iIsCat == 1 && iAchv == CAT_FAKE)
 			{
-				ms_mIsCat[sInfo.friendsID] = 2;
+				ms_mSavedCatState[sInfo.friendsID] = 2;
 				if (notify_partychat.GetBool())
 					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) remarked as fake CAT (CatConnect user)!"), sInfo.name, sInfo.friendsID);
 				if (notify_saychat.GetBool())
@@ -658,7 +754,7 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 			}
 			else if (!iIsCat && iAchv == CAT_FAKE)
 			{
-				ms_mIsCat[sInfo.friendsID] = 2;
+				ms_mSavedCatState[sInfo.friendsID] = 2;
 				if (notify_partychat.GetBool())
 					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) marked as fake CAT (CatConnect user)!"), sInfo.name, sInfo.friendsID);
 				if (notify_saychat.GetBool())
@@ -687,7 +783,7 @@ void CCatConnect::CPlayerListener::FireGameEvent(IGameEvent * pEvent)
 		if (strlen(pNetID) < 6)
 			return;
 		int iFriendID = atoi(pNetID + 5);
-		uint8_t iCat = IsCat(iFriendID);
+		uint8_t iCat = GetSavedState(iFriendID);
 		if (iCat == 1)
 		{
 			const char * pName = pEvent->GetString(xorstr_("name"));
@@ -748,7 +844,7 @@ ECatState CCatConnect::GetClientState(int iClient)
 	if (sInfo.fakeplayer || sInfo.ishltv || !sInfo.friendsID)
 		return CatState_Default;
 
-	uint8_t iCat = IsCat(sInfo.friendsID);
+	uint8_t iCat = GetSavedState(sInfo.friendsID);
 
 	if (iCat == 1)
 		return CatState_Cat;
@@ -768,7 +864,9 @@ ECatState CCatConnect::GetClientState(int iClient)
 	if (iFound != vPartyMembers.end())
 		return CatState_Party;
 
-	if (iCat == 2)
+	if (iCat == 3)
+		return CatState_VoteBack;
+	else if (iCat == 2)
 		return CatState_FakeCat;
 
 	return CatState_Default;
@@ -780,7 +878,7 @@ void CCatConnect::NotifyCat(int iClient)
 	if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(iClient, &sInfo))
 		return;
 
-	uint8_t iCat = IsCat(sInfo.friendsID);
+	uint8_t iCat = GetSavedState(sInfo.friendsID);
 	if (iCat == 1)
 	{
 		if (notify_partychat.GetBool())
@@ -818,6 +916,8 @@ Color CCatConnect::GetStateColor(ECatState eState)
 		return Color(0, 213, 153, 255);
 	case CatState_FakeCat:
 		return Color(0, 0, 255, 255);
+	case CatState_VoteBack:
+		return Color(255, 106, 0, 255);
 	}
 
 	return Color(0, 0, 0, 0);
@@ -831,6 +931,7 @@ bool CCatConnect::ShouldChangeColor(int iClient)
 	{
 	case ECatState::CatState_Cat:
 	case ECatState::CatState_FakeCat:
+	case ECatState::CatState_VoteBack:
 		return scoreboard_showcats.GetBool();
 	case ECatState::CatState_Friend:
 	case ECatState::CatState_Party:
@@ -838,6 +939,22 @@ bool CCatConnect::ShouldChangeColor(int iClient)
 	default:
 		return false;
 	}
+}
+
+void CCatConnect::MarkAsToVoteBack(uint32_t iSteamID3) { ms_mSavedCatState[iSteamID3] = 3; SaveCats(); CCatFiles::SaveData(); }
+
+bool CCatConnect::IsVotingBack(int iReason, int iSeconds)
+{
+	//FIXME: Something is broken
+	/*if (ms_pVotingBackTimer)
+	{
+		if (iReason == 2 || iReason == 8 || iReason == 17)
+			ms_pVotingBackTimer->ResetTime(float(iSeconds + 1));
+	}*/
+
+	bool bRet = ms_bIsVotingBack;
+	ms_bIsVotingBack = false;
+	return bRet;
 }
 
 NSCore::CCatCommandSafe votehook(xorstr_("callvote"), [](const CCommand & rCmd)
@@ -893,6 +1010,8 @@ CCatConnect::CAchievementListener CCatConnect::ms_GameEventAchievementListener;
 CCatConnect::CPlayerListener CCatConnect::ms_GameEventPlayerListener;
 CCatConnect::CVoteListener CCatConnect::ms_GameEventVoteCastListener;
 bool CCatConnect::ms_bJustJoined = false;
-std::map<uint32_t, uint8_t> CCatConnect::ms_mIsCat;
+std::map<uint32_t, uint8_t> CCatConnect::ms_mSavedCatState;
 std::vector<Color> CCatConnect::ms_vColors;
 unsigned int CCatConnect::ms_iCurrentVoteChoice = 0;
+NSUtils::ITimer * CCatConnect::ms_pVotingBackTimer = nullptr;
+bool CCatConnect::ms_bIsVotingBack = false;
