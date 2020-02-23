@@ -208,6 +208,8 @@
     <ClInclude Include="utils\autolock.h" />
     <ClInclude Include="utils\cbasecombatweapon.h" />
     <ClInclude Include="utils\cbaseentity.h" />
+    <ClInclude Include="utils\cgcclientsystem.h" />
+    <ClInclude Include="utils\ctfgcclientsystem.h" />
     <ClInclude Include="utils\ctfpartyclient.h" />
     <ClInclude Include="utils\ctfplayerresource.h" />
     <ClInclude Include="utils\defs.h" />

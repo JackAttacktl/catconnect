@@ -4,6 +4,8 @@
 #include "printers.h"
 #include "ctfpartyclient.h"
 #include "ctfplayerresource.h"
+#include "cgcclientsystem.h"
+#include "ctfgcclientsystem.h"
 #include "cbaseentity.h"
 #include "globals.h"
 #include "isteamfriends.h"
@@ -96,6 +98,9 @@ void CCatConnect::Init()
 	ms_pVotingBackTimer = g_CTimerMan.CreateTimer(nullptr, 2.0);
 	ms_pVotingBackTimer->SetCallback(NSUtils::TimerCallbackFn(&CCatConnect::OnBackVoteTimer));
 	ms_pVotingBackTimer->SetFlags(TIMER_REPEAT);
+
+	ConVar * pVar = NSInterfaces::g_pCVar->FindVar(xorstr_("cl_vote_ui_active_after_voting"));
+	pVar->SetValue(1); //keep it active after voting
 }
 
 void CCatConnect::Destroy()
@@ -396,7 +401,11 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 			ECatState eTargetState = GetClientState(iTarget);
 			ECatState eCallerState = GetClientState(iCaller);
 			if (ShouldMarkAsVoteBack(eCallerState) && !ShouldMarkAsVoteBack(eTargetState))
+			{
 				MarkAsToVoteBack(sInfoCaller.friendsID);
+				if (votekicks_manage.GetInt() == 2 && eCallerState != CatState_VoteBack)
+					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) from enemy team has been marked as to \"voteback\" and will be kicked when possible."), sInfoCaller.name, sInfoCaller.friendsID);
+			}
 		}
 		return;
 	}
@@ -728,7 +737,7 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 			else if (!iIsCat || debug_show.GetBool())
 				NSUtils::PrintToClientConsole(Color{ 0, 255, 0, 255 }, xorstr_("[CatConnect] Received CAT %s message from player %s ([U:1:%u])! Marking him as CAT.\n"), (iAchv == CAT_FAKE ? xorstr_("fake") : xorstr_("reply")), sInfo.name, sInfo.friendsID);
 
-			if (!iIsCat && iAchv != CAT_FAKE)
+			if ((!iIsCat || iIsCat == 3) && iAchv != CAT_FAKE)
 			{
 				ms_mSavedCatState[sInfo.friendsID] = 1;
 				if (notify_partychat.GetBool())
@@ -752,7 +761,7 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 				SaveCats();
 				CCatFiles::SaveData();
 			}
-			else if (!iIsCat && iAchv == CAT_FAKE)
+			else if ((!iIsCat || iIsCat == 3) && iAchv == CAT_FAKE)
 			{
 				ms_mSavedCatState[sInfo.friendsID] = 2;
 				if (notify_partychat.GetBool())

@@ -54,7 +54,7 @@ namespace NSUtils
 
 		virtual void SetCallback(TimerCallbackFn pFunc) { m_pCallback = pFunc; }
 		virtual void SetFlags(uint32_t iFlags) { m_iFlags = iFlags; }
-		virtual void ResetTime(float flTime){ m_flInterval = flTime; m_flTimeLeft = flTime; }
+		virtual void ResetTime(float flTime) { m_flInterval = flTime; m_flTimeLeft = flTime; }
 		virtual void Trigger() { m_flTimeLeft = 0.0f; Update(0.1f); }
 		virtual bool IsSeparate() const { return m_bSeparate; }
 

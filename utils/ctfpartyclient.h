@@ -16,11 +16,27 @@
 #include "sigscan.h"
 #include "xorstr.h"
 #include "e8call.h"
+#include "utlvector.h"
+
+//Added this "just because". Don't use unused types
+enum EQueueType : int
+{
+    QueueType_MvM_BootCamp = 0,
+    QueueType_MvM_MannUp,
+    QueueType_Competitive_6v6,
+    QueueType_Competitive_9v9_Unused,
+    QueueType_Competitive_12v12_Unused,
+    QueueType_Casual_6v6_Unused,
+    QueueType_Casual_9v9_Unused,
+    QueueType_Casual_12v12,
+    QueueType_Event_Unused
+};
 
 namespace NSReclass
 {
     class ITFGroupMatchCriteria;
     class ITFMatchGroupDescription;
+    class CTFParty;
 
     class CTFPartyClient
     {
@@ -28,13 +44,11 @@ namespace NSReclass
         FORCEINLINE static CTFPartyClient * GTFPartyClient()
         {
             typedef CTFPartyClient *(__cdecl * GTFPartyClient_t)();
-            //static CTFPartyClient * pAddr = *(CTFPartyClient **)(NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\xA1\x2A\x2A\x2A\x2A\xC3\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x2A\x55\x8B\xEC\x83\xEC\x4C\x53"), 23) + 1);
             static GTFPartyClient_t pFunc = (GTFPartyClient_t)e8call((NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x55\x8B\xEC\x81\xEC\x10\x02\x00\x00\x56\x8B\xF1\x89\x75\xFC\xE8"), 16) + 16));
             return pFunc();
         }
 
-        //use BInStandbyQueue and BInQueueForMatchGroup cuz they are more safe
-        //bool BInQueue() { return *(uint8_t *)((uint8_t *)this + 73); }
+        FORCEINLINE bool BInQueue(EQueueType iType) { return BInStandbyQueue() || BInQueueForMatchGroup(iType); }
 
         //aka GetNumOnlineMembers in cathook
         FORCEINLINE int CountNumOnlinePartyMembers()
@@ -86,6 +100,19 @@ namespace NSReclass
             return BCanQueueForStandbyFn(this);
         }
 
+        FORCEINLINE bool BCanQueueForMatch(EQueueType iType)
+        {
+            CUtlVector<wchar_t[4096]> rEligibilityData; //this vector contains reasons why we can't queue. tbh we don't care
+            typedef bool (__thiscall * BCanQueueForMatch_t)(CTFPartyClient *, EQueueType, CUtlVector<wchar_t[4096]> &);
+            static BCanQueueForMatch_t BCanQueueForMatchFn = nullptr;
+            if (!BCanQueueForMatchFn)
+            {
+                void * pAddr = (void *)NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x55\x8B\xEC\x81\xEC\x38\x08\x00\x00\x8B\x45\x0C"), 12);
+                BCanQueueForMatchFn = BCanQueueForMatch_t(pAddr);
+            }
+            return BCanQueueForMatchFn(this, iType, rEligibilityData);
+        }
+
         FORCEINLINE ITFGroupMatchCriteria * MutLocalGroupCriteria()
         {
             typedef ITFGroupMatchCriteria * (__thiscall * MutLocalGroupCriteria_t)(CTFPartyClient *);
@@ -96,6 +123,18 @@ namespace NSReclass
                 MutLocalGroupCriteriaFn = MutLocalGroupCriteria_t(pAddr);
             }
             return MutLocalGroupCriteriaFn(this);
+        }
+
+        FORCEINLINE void SaveCasualCriteria()
+        {
+            typedef void (__thiscall * SaveCasualCriteria_t)(CTFPartyClient *);
+            static SaveCasualCriteria_t SaveCasualCriteria = nullptr;
+            if (!SaveCasualCriteria)
+            {
+                void * pAddr = (void *)e8call_direct(NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x55\x8B\xEC\x56\x8B\x75\x08\x81\xFE\x2A\x2A\x2A\x2A\x74\x2A\x56"), 16) + 101);
+                SaveCasualCriteria = SaveCasualCriteria_t(pAddr);
+            }
+            SaveCasualCriteria(this);
         }
 
         FORCEINLINE int LoadSavedCasualCriteria()
@@ -123,9 +162,9 @@ namespace NSReclass
             RequestQueueForStandbyFn(this);
         }
 
-        FORCEINLINE char RequestQueueForMatch(int iType)
+        FORCEINLINE char RequestQueueForMatch(EQueueType iType)
         {
-            typedef char (__thiscall * RequestQueueForMatch_t)(CTFPartyClient *, int);
+            typedef char (__thiscall * RequestQueueForMatch_t)(CTFPartyClient *, EQueueType);
             static RequestQueueForMatch_t RequestQueueForMatchFn = nullptr;
             if (!RequestQueueForMatchFn)
             {
@@ -135,9 +174,9 @@ namespace NSReclass
             return RequestQueueForMatchFn(this, iType);
         }
 
-        FORCEINLINE bool BInQueueForMatchGroup(int iType)
+        FORCEINLINE bool BInQueueForMatchGroup(EQueueType iType)
         {
-            typedef bool (__thiscall * BInQueueForMatchGroup_t)(CTFPartyClient*, int);
+            typedef bool (__thiscall * BInQueueForMatchGroup_t)(CTFPartyClient *, EQueueType);
             static BInQueueForMatchGroup_t BInQueueForMatchGroupFn = nullptr;
             if (!BInQueueForMatchGroupFn)
             {
@@ -149,12 +188,12 @@ namespace NSReclass
             return BInQueueForMatchGroupFn(this, iType);
         }
 
-        FORCEINLINE bool BInStandbyQueue() { return *((uint8_t *)this + 88); }
+        FORCEINLINE bool BInStandbyQueue() { return *((bool *)this + 88); }
 
         //aka RequestLeaveForMatch in cathook
-        FORCEINLINE char CancelMatchQueueRequest(int iType)
+        FORCEINLINE char CancelMatchQueueRequest(EQueueType iType)
         {
-            typedef char (__thiscall * CancelMatchQueueRequest_t)(CTFPartyClient *, int);
+            typedef char (__thiscall * CancelMatchQueueRequest_t)(CTFPartyClient *, EQueueType);
             static CancelMatchQueueRequest_t CancelMatchQueueRequestFn = nullptr;
             if (!CancelMatchQueueRequestFn)
             {
@@ -242,10 +281,11 @@ namespace NSReclass
             return KickPlayerFn(this, sSteamID);
         }
 
-        //I'm not sure about this function
+        FORCEINLINE CTFParty * GetParty() { return *reinterpret_cast<CTFParty **>((char *)this + 0x30); } //CTFParty inherits from GCSDK::IParty and has virtual table!
+
         FORCEINLINE bool GetCurrentPartyLeader(CSteamID& sID)
         {
-            void * pParty = *reinterpret_cast<void **>((char *)this + 0x34);
+            CTFParty * pParty = GetParty();
             if (!pParty) return false;
             sID = *reinterpret_cast<CSteamID *>((char *)pParty + 0x20);
             return true;

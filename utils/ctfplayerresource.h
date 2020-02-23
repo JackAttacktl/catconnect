@@ -4,6 +4,7 @@
 #include <cstring>
 #include <string>
 #include "interfaces.h"
+#include "defs.h"
 #include "netvars.h"
 #include "cdll_int.h"
 #include "client_class.h"
@@ -21,10 +22,10 @@ namespace NSReclass
 	class CTFPlayerResource
 	{
 	public:
-		inline CTFPlayerResource() : m_iEntityNumber(0), m_iMyClassID(-1) { RecheckAndGetEntity(); }
-		inline ~CTFPlayerResource() {}
+		FORCEINLINE CTFPlayerResource() : m_iEntityNumber(0), m_iMyClassID(-1) { RecheckAndGetEntity(); }
+		FORCEINLINE ~CTFPlayerResource() {}
 
-		inline bool IsPlayerAlive(int iClient)
+		FORCEINLINE bool IsPlayerAlive(int iClient)
 		{
 			CBaseEntity * pMyself = EntPointerOfEntNumber(RecheckAndGetEntity());
 			if (!pMyself) return false;
@@ -34,7 +35,7 @@ namespace NSReclass
 			return *((bool *)((char *)pMyself + s_iOffset + iClient));
 		}
 
-		inline int GetPlayerClass(int iClient)
+		FORCEINLINE int GetPlayerClass(int iClient)
 		{
 			CBaseEntity * pMyself = EntPointerOfEntNumber(RecheckAndGetEntity());
 			if (!pMyself) return 0;
@@ -44,7 +45,7 @@ namespace NSReclass
 			return *((int *)((char *)pMyself + s_iOffset + iClient * 4));
 		}
 
-		inline int GetPlayerTeam(int iClient)
+		FORCEINLINE int GetPlayerTeam(int iClient)
 		{
 			CBaseEntity * pMyself = EntPointerOfEntNumber(RecheckAndGetEntity());
 			if (!pMyself) return 0;
@@ -55,7 +56,7 @@ namespace NSReclass
 		}
 
 	private:
-		inline CBaseEntity * EntPointerOfEntNumber(int iEntity)
+		FORCEINLINE CBaseEntity * EntPointerOfEntNumber(int iEntity)
 		{
 			if (iEntity <= 0)
 				return nullptr;
@@ -72,7 +73,7 @@ namespace NSReclass
 			return pEnt;
 		}
 
-		inline int RecheckAndGetEntity()
+		FORCEINLINE int RecheckAndGetEntity()
 		{
 			if (m_iMyClassID <= 0) //m_ClassID will be 0 until all inited
 			{

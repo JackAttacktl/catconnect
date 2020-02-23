@@ -337,5 +337,11 @@
     <ClInclude Include="utils\ctfplayerresource.h">
       <Filter>Header\utils\reclass</Filter>
     </ClInclude>
+    <ClInclude Include="utils\ctfgcclientsystem.h">
+      <Filter>Header\utils\reclass</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\cgcclientsystem.h">
+      <Filter>Header\utils\reclass</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

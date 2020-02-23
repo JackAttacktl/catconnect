@@ -1,6 +1,7 @@
 #ifndef _CBASEENTITY_INC_
 #define _CBASEENTITY_INC_
 
+#include "defs.h"
 #include "iclientnetworkable.h"
 #include "iclientunknown.h"
 #include "netvars.h"
@@ -16,15 +17,15 @@ namespace NSReclass
 	{
 	public:
 
-		inline IClientNetworkable * GetClientNetworkable() const { return CALL_VFUNC_OFFS(IClientNetworkable * (__thiscall *)(const CBaseEntity *), this, 4)(this); }
+		FORCEINLINE IClientNetworkable * GetClientNetworkable() const { return CALL_VFUNC_OFFS(IClientNetworkable * (__thiscall *)(const CBaseEntity *), this, 4)(this); }
 
-		inline bool IsPlayer() const
+		FORCEINLINE bool IsPlayer() const
 		{
 			//linux offset 184
 			return CALL_VFUNC_OFFS(bool (__thiscall *)(const CBaseEntity * pThis), this, 131)(this);
 		}
 
-		inline CBaseEntity * GetOwner(int * pIndex = nullptr) const
+		FORCEINLINE CBaseEntity * GetOwner(int * pIndex = nullptr) const
 		{
 			static unsigned int s_iOffset = 0;
 			if (!s_iOffset)
@@ -40,7 +41,7 @@ namespace NSReclass
 			return (CBaseEntity *)pUnk->GetBaseEntity();
 		}
 
-		inline int GetTeam() const
+		FORCEINLINE int GetTeam() const
 		{
 			static unsigned int s_iOffset = 0;
 			if (!s_iOffset)
@@ -48,7 +49,7 @@ namespace NSReclass
 			return *(int *)((char *)this + s_iOffset);
 		}
 
-		inline int GetClass() const
+		FORCEINLINE int GetClass() const
 		{
 			static unsigned int s_iOffset = 0;
 			if (!s_iOffset)
@@ -56,7 +57,7 @@ namespace NSReclass
 			return *(int *)((char *)this + s_iOffset);
 		}
 
-		inline bool IsPlayerAlive() const
+		FORCEINLINE bool IsPlayerAlive() const
 		{
 			static unsigned int s_iOffset = 0;
 			if (!s_iOffset)

@@ -13,8 +13,10 @@
 	Implement custom dynamic cast (easy): - Done
 		Implement FindCompleteThisPointer function (we can get parents / childs and their pointers from RTTI) (easy) - Done
 		Implement FindInterfaceThisPointer function (and custom dyncast) (easy) - Done
-	Add support to hook member function by its name (ala HookFunction(ThisPointer, Class, FuncName, Callback)) (easy) - WIP, 50% done but can be used already
+	Add support to hook member function by its name (ala HookFunction(ThisPointer, Class, FuncName, Callback)) (easy) - Done but not fully tested yet
 	Find function offset from its signature (easy)
+	Implement per-base hooks (easy, simply copy whole table and edit it instead of patching .rodata section)
+	Implement hooks sync (easy, but is this actually needed?)
 	Port it to linux - WIP (90%, I need to recheck some things to make sure everything implemented correctly)
 */
 
@@ -73,7 +75,6 @@ namespace NSUtils
 			char _M_d_name[1];											// Mangled name (prefix: .?AV=classes, .?AU=structs)
 		};
 
-		constexpr uint32_t MIN_TYPE_INFO_SIZE = (offsetof(STypeInfo, _M_d_name) + sizeof(".?AVx"));
 		typedef STypeInfo _RTTITypeDescriptor;
 
 		//Base class "Pointer to Member Data"
@@ -153,8 +154,8 @@ namespace NSUtils
 #define RTTI_IS_MULTICLASS(flags) (flags <= (MBCF_REPEAT_BASE | MBCF_AMBIGUOUS | MBCF_IDK_SUPERCOOL))
 
 		//possible flags of _RTTIMultiBaseClass. All info got from ida so this might be incorrect
-		constexpr uint32_t MBCF_REPEAT_BASE = 0x1;						// Not sure but some classes like IClientEntity has it
-		constexpr uint32_t MBCF_AMBIGUOUS = 0x2;						// Same as CHD_AMBIGUOUS in msvc rtti
+		constexpr uint32_t MBCF_REPEAT_BASE = 0x1;						// Non-diamin repeat mask
+		constexpr uint32_t MBCF_DIAMOND_SHAPED = 0x2;					// Here we have diamond problem
 		constexpr uint32_t MBCF_IDK_SUPERCOOL = 0x10;					// Idk what it means
 
 		//possible flags of _RTTIMultiBaseClassesTypeInfo. All info again got from ida =|
@@ -214,16 +215,7 @@ namespace NSUtils
 #define GetOriginalFuncUnknown(TReturn, TClass, TFuncName, TAttribs) (reinterpret_cast<TReturn (TClass::*)() TAttribs>(&TClass::TFuncName)) //when we don't know count of arguments / varang func
 #define GetVFuncInfo(pOriginalFunc) \
 		NSUtils::CVirtualMemberTableMan::SVFuncInfo sInfo; \
-		NSUtils::CVirtualMemberTableMan::GetFuncVInfo(pOriginalFunc, &sInfo); \
-		if (sInfo.m_bIsValid) \
-		{ \
-			if (sInfo.m_iVTableOffset) \
-			{ \
-				/*Not completed yet! So until I complete this m_iVTableOffset must be 0! \
-				TODO: Resolve function offset in complete vtable! We can do it using rtti information */ \
-				sInfo.m_bIsValid = false; \
-			} \
-		}
+		NSUtils::CVirtualMemberTableMan::GetFuncVInfo(pOriginalFunc, &sInfo);
 
 	public:
 		//Remember, classes may have several vtables and their offsets stored into rtti tables! Use RTTI functions below to get them before hooking
@@ -253,6 +245,7 @@ namespace NSUtils
 				//restore old vtable
 				for (auto pFunc : m_mHookedFunctions)
 					GetVTable()[pFunc.first] = pFunc.second;
+				for (auto pChild : m_vChildTables) delete pChild;
 			}
 		}
 
@@ -265,6 +258,7 @@ namespace NSUtils
 			}
 			//destroy this vtable
 			m_bValidHook = false;
+			for (auto pChild : m_vChildTables) pChild->DestroyNoRestore();
 			delete this;
 		}
 
@@ -273,6 +267,8 @@ namespace NSUtils
 		inline void ** GetVTable() { return *m_pThis; }
 		inline bool IsVTableValid() { return m_bValidHook; }
 		inline size_t GetVTableSize() { return m_iSize; }
+		inline void AddChild(NSUtils::CVirtualMemberTableMan * pChild) { m_vChildTables.push_back(pChild); }
+		inline NSUtils::CVirtualMemberTableMan * FindChild(void * pChildThis) { for (auto * pChild : m_vChildTables) if ((void *)pChild->GetThis() == pChildThis) return pChild; return nullptr; }
 
 		template<typename TFunc = void *> inline TFunc GetOriginalFunction(const unsigned int iIndex)
 		{
@@ -339,7 +335,23 @@ namespace NSUtils
 		{ \
 			GetVFuncInfo(GetOriginalFunc(TReturn, TClass, TFuncName, TAttribs, __VA_ARGS__)) \
 			if (sInfo.m_bIsValid) \
-				return (void *)pTbl->GetOriginalFunction(sInfo.m_iFuncOffset); \
+			{ \
+				if (sInfo.m_iVTableOffset) \
+				{ \
+					void * pNewThis = (void *)((char *)pTbl->GetThis() + sInfo.m_iVTableOffset); \
+					NSUtils::CVirtualMemberTableMan * pNewTbl = nullptr; \
+					if (!(pNewTbl = pTbl->FindChild(pNewThis))) \
+					{ \
+						pNewTbl = new NSUtils::CVirtualMemberTableMan(pNewThis); \
+						pTbl->AddChild(pNewTbl); \
+						return (void *)pNewTbl->GetOriginalFunction(sInfo.m_iFuncOffset); \
+					} \
+					else \
+						return (void *)pNewTbl->GetOriginalFunction(sInfo.m_iFuncOffset); \
+				} \
+				else \
+					return (void *)pTbl->GetOriginalFunction(sInfo.m_iFuncOffset); \
+			} \
 			return nullptr; \
 		}(pTable)
 
@@ -347,14 +359,46 @@ namespace NSUtils
 		{ \
 			GetVFuncInfo(GetOriginalFunc(TReturn, TClass, TFuncName, TAttribs, __VA_ARGS__)) \
 			if (sInfo.m_bIsValid) \
-				return pTbl->HookFunction(pCallback, sInfo.m_iFuncOffset); \
+			{ \
+				if (sInfo.m_iVTableOffset) \
+				{ \
+					void * pNewThis = (void *)((char *)pTbl->GetThis() + sInfo.m_iVTableOffset); \
+					NSUtils::CVirtualMemberTableMan * pNewTbl = nullptr; \
+					if (!(pNewTbl = pTbl->FindChild(pNewThis))) \
+					{ \
+						pNewTbl = new NSUtils::CVirtualMemberTableMan(pNewThis); \
+						pTbl->AddChild(pNewTbl); \
+						return pNewTbl->HookFunction(pCallback, sInfo.m_iFuncOffset); \
+					} \
+					else \
+						return pNewTbl->HookFunction(pCallback, sInfo.m_iFuncOffset); \
+				} \
+				else \
+					return pTbl->HookFunction(pCallback, sInfo.m_iFuncOffset); \
+			} \
 		}(pTable)
 
 #define VMTUnhookFunctionAuto(pTable, TReturn, TClass, TFuncName, TAttribs, ...) [](NSUtils::CVirtualMemberTableMan * pTbl) -> void \
 		{ \
 			GetVFuncInfo(GetOriginalFunc(TReturn, TClass, TFuncName, TAttribs, __VA_ARGS__)) \
 			if (sInfo.m_bIsValid) \
-				return pTbl->UnhookFunction(sInfo.m_iFuncOffset); \
+			{ \
+				if (sInfo.m_iVTableOffset) \
+				{ \
+					void * pNewThis = (void *)((char *)pTbl->GetThis() + sInfo.m_iVTableOffset); \
+					NSUtils::CVirtualMemberTableMan * pNewTbl = nullptr; \
+					if (!(pNewTbl = pTbl->FindChild(pNewThis))) \
+					{ \
+						pNewTbl = new NSUtils::CVirtualMemberTableMan(pNewThis); \
+						pTbl->AddChild(pNewTbl); \
+						return pNewTbl->UnhookFunction(sInfo.m_iFuncOffset); \
+					} \
+					else \
+						return pNewTbl->UnhookFunction(sInfo.m_iFuncOffset); \
+				} \
+				else \
+					return pTbl->UnhookFunction(sInfo.m_iFuncOffset); \
+			} \
 		}(pTable)
 
 		//when we don't know count of arguments / varang func. Might be unsafe!
@@ -363,7 +407,23 @@ namespace NSUtils
 		{ \
 			GetVFuncInfo(GetOriginalFuncUnknown(TReturn, TClass, TFuncName, TAttribs)) \
 			if (sInfo.m_bIsValid) \
-				return (void *)pTbl->GetOriginalFunction(sInfo.m_iFuncOffset); \
+			{ \
+				if (sInfo.m_iVTableOffset) \
+				{ \
+					void * pNewThis = (void *)((char *)pTbl->GetThis() + sInfo.m_iVTableOffset); \
+					NSUtils::CVirtualMemberTableMan * pNewTbl = nullptr; \
+					if (!(pNewTbl = pTbl->FindChild(pNewThis))) \
+					{ \
+						pNewTbl = new NSUtils::CVirtualMemberTableMan(pNewThis); \
+						pTbl->AddChild(pNewTbl); \
+						return (void *)pNewTbl->GetOriginalFunction(sInfo.m_iFuncOffset); \
+					} \
+					else \
+						return (void *)pNewTbl->GetOriginalFunction(sInfo.m_iFuncOffset); \
+				} \
+				else \
+					return (void *)pTbl->GetOriginalFunction(sInfo.m_iFuncOffset); \
+			} \
 			return nullptr; \
 		}(pTable)
 
@@ -371,14 +431,46 @@ namespace NSUtils
 		{ \
 			GetVFuncInfo(GetOriginalFuncUnknown(TReturn, TClass, TFuncName, TAttribs)) \
 			if (sInfo.m_bIsValid) \
-				return pTbl->HookFunction(pCallback, sInfo.m_iFuncOffset); \
+			{ \
+				if (sInfo.m_iVTableOffset) \
+				{ \
+					void * pNewThis = (void *)((char *)pTbl->GetThis() + sInfo.m_iVTableOffset); \
+					NSUtils::CVirtualMemberTableMan * pNewTbl = nullptr; \
+					if (!(pNewTbl = pTbl->FindChild(pNewThis))) \
+					{ \
+						pNewTbl = new NSUtils::CVirtualMemberTableMan(pNewThis); \
+						pTbl->AddChild(pNewTbl); \
+						return pNewTbl->HookFunction(pCallback, sInfo.m_iFuncOffset); \
+					} \
+					else \
+						return pNewTbl->HookFunction(pCallback, sInfo.m_iFuncOffset); \
+				} \
+				else \
+					return pTbl->HookFunction(pCallback, sInfo.m_iFuncOffset); \
+			} \
 		}(pTable)
 
 #define VMTUnhookFunctionAutoUnknown(pTable, TReturn, TClass, TFuncName, TAttribs) [](NSUtils::CVirtualMemberTableMan * pTbl) -> void \
 		{ \
 			GetVFuncInfo(GetOriginalFuncUnknown(TReturn, TClass, TFuncName, TAttribs)) \
 			if (sInfo.m_bIsValid) \
-				return pTbl->UnhookFunction(sInfo.m_iFuncOffset); \
+			{ \
+				if (sInfo.m_iVTableOffset) \
+				{ \
+					void * pNewThis = (void *)((char *)pTbl->GetThis() + sInfo.m_iVTableOffset); \
+					NSUtils::CVirtualMemberTableMan * pNewTbl = nullptr; \
+					if (!(pNewTbl = pTbl->FindChild(pNewThis))) \
+					{ \
+						pNewTbl = new NSUtils::CVirtualMemberTableMan(pNewThis); \
+						pTbl->AddChild(pNewTbl); \
+						return pNewTbl->UnhookFunction(sInfo.m_iFuncOffset); \
+					} \
+					else \
+						return pNewTbl->UnhookFunction(sInfo.m_iFuncOffset); \
+				} \
+				else \
+					return pTbl->UnhookFunction(sInfo.m_iFuncOffset); \
+			} \
 		}(pTable)
 
 		static inline const char * UndecorateClassName(const char * pDecorated)
@@ -593,20 +685,11 @@ namespace NSUtils
 			void *** pCastedThis = nullptr;
 			__try
 			{
-				NSRTTI::_RTTIClassHierarchyDescriptor * pRTTIHierDesc = pRTTILocator->m_pClassDescriptor;
-				for (uint32_t iClass = 1 /*not a mistake!*/; iClass < pRTTIHierDesc->m_uNumBaseClasses; iClass++)
+				pCastedThis = (void ***)((char *)pInterfaceThis - pRTTILocator->m_uOffset);
+				if (pRTTILocator->m_cdOffset != 0)
 				{
-					NSRTTI::_RTTIBaseClassArray * pClassArr = pRTTIHierDesc->m_pBaseClassArray;
-					NSRTTI::_RTTIBaseClassDescriptor * pBaseDescriptor = pClassArr->m_pArrayOfBaseClassDescriptors[iClass];
-					if (pBaseDescriptor->m_pmd.m_mdisp == pRTTILocator->m_uOffset) //not sure about that in case where base is virtual (check for CHD_AMBIGUOUS|CHD_VIRTINH flags), tests needed
-					{
-						pCastedThis = (void ***)((char *)pInterfaceThis - pBaseDescriptor->m_pmd.m_mdisp);
-						if (pBaseDescriptor->m_pmd.m_pdisp != -1)
-						{
-							uint32_t uVtableAdditinalOffset = pBaseDescriptor->m_pmd.m_pdisp;
-							pCastedThis = (void ***)((char *)pCastedThis - (uVtableAdditinalOffset + pBaseDescriptor->m_pmd.m_vdisp));
-						}
-					}
+					int iAdditionalSub = *reinterpret_cast<int *>((char *)pInterfaceThis - pRTTILocator->m_cdOffset);
+					pCastedThis = (void ***)((char *)pCastedThis - iAdditionalSub);
 				}
 			}
 			__except (EXCEPTION_EXECUTE_HANDLER) { return nullptr; }
@@ -971,6 +1054,7 @@ namespace NSUtils
 	public:
 		void *** m_pThis = nullptr;
 		std::map<unsigned int, void *> m_mHookedFunctions;
+		std::vector<CVirtualMemberTableMan *> m_vChildTables;
 		size_t m_iSize = 0;
 		bool m_bValidHook;
 	};
