@@ -233,8 +233,8 @@ bool NSCore::CGlowEffect::ShouldRenderGlow(IClientNetworkable * pClientNetworkab
     if (pEnt->IsPlayer())
     {
         ECatState eState = CCatConnect::GetClientState(pClientNetworkable->entindex());
-        //if (eState != ECatState::CatState_Cat)
-        //    return false;
+        if (eState != ECatState::CatState_Cat)
+            return false;
         if (!pEnt->IsPlayerAlive())
             return false;
         return true;
