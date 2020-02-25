@@ -72,10 +72,12 @@ void CHooksMan::InitHooks()
 	VMTHookFunctionAutoUnknown(pTable, &CHooksMan::ClientCmd, void, IVEngineClient, ClientCmd, VMT_NOATTRIBS);
 	VMTHookFunctionAutoUnknown(pTable, &CHooksMan::ClientCmd_Unrestricted, void, IVEngineClient, ClientCmd_Unrestricted, VMT_NOATTRIBS);
 	VMTHookFunctionAutoUnknown(pTable, &CHooksMan::ExecuteClientCmd, void, IVEngineClient, ExecuteClientCmd, VMT_NOATTRIBS);
+	VMTHookFunctionAutoUnknown(pTable, &CHooksMan::IsPlayingDemo, bool, IVEngineClient, IsPlayingDemo, VMT_NOATTRIBS);
 	m_mHookedVtables[VMT_CLIENTENGINE] = pTable;
 	
 	pTable = new NSUtils::CVirtualMemberTableMan(NSInterfaces::g_pClientModeShared);
 	VMTHookFunctionAutoUnknown(pTable, &CHooksMan::CreateMove, bool, IClientMode, CreateMove, VMT_NOATTRIBS);
+	VMTHookFunctionAutoUnknown(pTable, &CHooksMan::DoPostScreenSpaceEffects, bool, IClientMode, DoPostScreenSpaceEffects, VMT_NOATTRIBS);
 	m_mHookedVtables[VMT_CLIENTMODE] = pTable;
 	
 	pTable = new NSUtils::CVirtualMemberTableMan(NSInterfaces::g_pVGUIPanel);
@@ -408,6 +410,28 @@ Color * CHooksMan::OnDeathNoticeGetTeamColor(void * pThis, void * pDumbArg, Colo
 	pOriginalFunc(pThis, pDumbArg, &cClr, iTeam, bLocalPlayer);
 	*pClr = cClr;
 	return &cClr;
+}
+
+bool CHooksMan::DoPostScreenSpaceEffects(IClientMode * pThis, void * pDumbArg, const CViewSetup * pSetup)
+{
+	static auto pOriginalFunc = (decltype(&CHooksMan::DoPostScreenSpaceEffects))VMTGetOriginalFunctionAutoUnknown(m_mHookedVtables[VMT_CLIENTMODE], bool, IClientMode, DoPostScreenSpaceEffects, VMT_NOATTRIBS);
+	static ConVar * s_pReplayRenderGlow = nullptr;
+	if (!s_pReplayRenderGlow) s_pReplayRenderGlow = NSInterfaces::g_pCVar->FindVar(xorstr_("replay_rendersetting_renderglow"));
+	bool bOldValue = s_pReplayRenderGlow ? s_pReplayRenderGlow->GetBool() : false;
+	CCatConnect::OnDoPostScreenSpaceEffects(true);
+	bool bResult = pOriginalFunc(pThis, pDumbArg, pSetup);
+	CCatConnect::OnDoPostScreenSpaceEffects(false);
+	if (s_pReplayRenderGlow) s_pReplayRenderGlow->SetValue(bOldValue ? 1 : 0);
+	return bResult;
+}
+
+bool CHooksMan::IsPlayingDemo(IClientMode * pThis, void * pDumbArg)
+{
+	static auto pOriginalFunc = (decltype(&CHooksMan::IsPlayingDemo))VMTGetOriginalFunctionAutoUnknown(m_mHookedVtables[VMT_CLIENTENGINE], bool, IVEngineClient, IsPlayingDemo, VMT_NOATTRIBS);
+	bool bResult = false;
+	if (CCatConnect::OnPlayingDemoCheck(bResult))
+		return bResult;
+	return pOriginalFunc(pThis, pDumbArg);
 }
 
 LRESULT CHooksMan::OnWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

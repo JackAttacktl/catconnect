@@ -53,6 +53,7 @@ NSCore::CSetting votekicks_showvoters(xorstr_("catconnect.votekicks.partychat.no
 NSCore::CSetting scoreboard_showcats(xorstr_("catconnect.scoreboard.showcats"), xorstr_("1"));
 NSCore::CSetting scoreboard_showfriends(xorstr_("catconnect.scoreboard.showfriends"), xorstr_("1"));
 NSCore::CSetting deathnotice_changecolors(xorstr_("catconnect.deathnotice.changecolors"), xorstr_("1"));
+NSCore::CSetting glow_suppresstfglow(xorstr_("catconnect.glow.suppress.stocks"), xorstr_("1"));
 NSCore::CSetting debug_show(xorstr_("catconnect.showdebug"), xorstr_("0"));
 
 struct SSavedCat
@@ -321,11 +322,7 @@ std::string CCatConnect::OnChatMessage(int iClient, int iFilter, const char * pM
 		if (iFilter == CHAT_FILTER_NONE || (iFilter & CHAT_FILTER_PUBLICCHAT))
 		{
 			//remove unprintable spammed by cats from chat
-			boost::erase_all(sOriginalMsg, xorstr_("\r"));
-			boost::erase_all(sOriginalMsg, xorstr_("\n"));
-			boost::erase_all(sOriginalMsg, xorstr_("\t"));
-			boost::erase_all(sOriginalMsg, xorstr_("\v"));
-			boost::erase_all(sOriginalMsg, xorstr_("\x1B")); //ESC character
+			RemoveUnprintable(sOriginalMsg);
 		}
 	}
 	return sOriginalMsg;
@@ -572,6 +569,14 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 
 	if (!*pVoteOption)
 		delete[] pVoteOption; //it was unused
+}
+
+bool CCatConnect::OnPlayingDemoCheck(bool &bResult)
+{
+	if (!glow_suppresstfglow.GetBool())
+		return false;
+	bResult = true;
+	return ms_bIsDrawingPostScreenSpaceEffects;
 }
 
 void CCatConnect::LoadSavedCats()
@@ -972,6 +977,15 @@ bool CCatConnect::IsVotingBack(int iReason, int iSeconds)
 	return bRet;
 }
 
+void CCatConnect::RemoveUnprintable(std::string & sStr)
+{
+	boost::erase_all(sStr, xorstr_("\r"));
+	boost::erase_all(sStr, xorstr_("\n"));
+	boost::erase_all(sStr, xorstr_("\t"));
+	boost::erase_all(sStr, xorstr_("\v"));
+	boost::erase_all(sStr, xorstr_("\x1B")); //ESC character
+}
+
 NSCore::CCatCommandSafe votehook(xorstr_("callvote"), [](const CCommand & rCmd)
 {
 	if (!votekicks_manage.GetBool())
@@ -1030,3 +1044,4 @@ std::vector<Color> CCatConnect::ms_vColors;
 unsigned int CCatConnect::ms_iCurrentVoteChoice = 0;
 NSUtils::ITimer * CCatConnect::ms_pVotingBackTimer = nullptr;
 bool CCatConnect::ms_bIsVotingBack = false;
+bool CCatConnect::ms_bIsDrawingPostScreenSpaceEffects = false;

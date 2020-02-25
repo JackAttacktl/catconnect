@@ -84,8 +84,8 @@ ITexture * GetBuffer(int i)
 
 static SShaderStencilState SS_NeverSolid;
 static SShaderStencilState SS_InvisibleSolid;
-static SShaderStencilState SS_Null;
 static SShaderStencilState SS_Drawing;
+static SShaderStencilState SS_Null;
 
 CScreenSpaceEffectRegistration::CScreenSpaceEffectRegistration(const char * pName, IScreenSpaceEffect * pEffect)
 {
@@ -290,6 +290,12 @@ void NSCore::CGlowEffect::StartStenciling()
             break;
         case 2:
             SS_InvisibleSolid.SetStencilState(pRenderContext);
+            pRenderContext->DepthRange(0.0f, 1.0f);
+            m_CMatUnlit->AlphaModulate(1.0f);
+            NSInterfaces::g_pModelRender->ForcedMaterialOverride(m_CMatUnlit);
+            break;
+        case 3:
+            SS_Drawing.SetStencilState(pRenderContext);
             pRenderContext->DepthRange(0.0f, 1.0f);
             m_CMatUnlit->AlphaModulate(1.0f);
             NSInterfaces::g_pModelRender->ForcedMaterialOverride(m_CMatUnlit);

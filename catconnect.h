@@ -31,6 +31,8 @@ public:
 	static ECatState FASTERCALL GetClientState(int iClient);
 	static inline Color GetDeathNoticeColorFromStack() { if (!ms_vColors.size()) return Color(0, 0, 0, 0); Color cRet = ms_vColors[0]; ms_vColors.erase(ms_vColors.begin()); return cRet; }
 	static void FASTERCALL OnDeathNoticePaintPre(void * pThis);
+	static inline void OnDoPostScreenSpaceEffects(bool bStart) { ms_bIsDrawingPostScreenSpaceEffects = bStart; }
+	static bool FASTERCALL OnPlayingDemoCheck(bool &bResult); //this hook used to prevent CGlowObjectManager from drawing outlines
 	static inline void SetVoteState(unsigned int iValue = 0) { ms_iCurrentVoteChoice = iValue; }
 	static bool FASTERCALL IsVotingBack(int iReason, int iSeconds);
 	static Color FASTERCALL GetStateColor(ECatState);
@@ -68,6 +70,7 @@ private:
 	static bool FASTERCALL ShouldChangeColor(int iClient);
 	static void FASTERCALL NotifyCat(int iClient);
 	static void FASTERCALL MarkAsToVoteBack(uint32_t iSteamID3);
+	static void FASTERCALL RemoveUnprintable(std::string &);
 
 	static void LoadSavedCats();
 	static void SaveCats();
@@ -83,6 +86,7 @@ private:
 	static unsigned int ms_iCurrentVoteChoice;
 	static NSUtils::ITimer * ms_pVotingBackTimer;
 	static bool ms_bIsVotingBack;
+	static bool ms_bIsDrawingPostScreenSpaceEffects;
 };
 
 class CCatConnectExpose : public ICatConnect

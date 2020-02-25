@@ -13,7 +13,7 @@
 #include "settings/settings.h"
 #include "inputsystem/iinputsystem.h"
 
-NSMenu::CMenu::CMenu() : m_bEnabled(false), m_bIsOnDrag(false), m_pMouse{ 0, 0 }, m_pPrevMouse{ 0, 0 }, m_pMyPosition{ 100, 100 }, m_pMyScale{ 208, 530 }, m_EMouseButton(EMouseButton::MB_None), m_iKey(BUTTON_CODE_NONE)
+NSMenu::CMenu::CMenu() : m_bEnabled(false), m_bIsOnDrag(false), m_pMouse{ 0, 0 }, m_pPrevMouse{ 0, 0 }, m_pMyPosition{ 100, 100 }, m_pMyScale{ 208, 600 }, m_EMouseButton(EMouseButton::MB_None), m_iKey(BUTTON_CODE_NONE)
 {
 	m_pMyStyle = new CDefaultStyle();
 	m_pTabs = new CTabGroup(this);
@@ -57,6 +57,8 @@ void NSMenu::CMenu::CreateGUI()
 				}, GROUP_DEFAULT_WIDTH),
 			new CGroupBox(this, xorstr_("Visual"),
 				{
+					new CCheckBox(this, xorstr_("Suppress TF2 glows"), xorstr_("catconnect.glow.suppress.stocks")),
+					new CListBox(this, xorstr_("Render glow as"), xorstr_("catconnect.glow.howrender"), { xorstr_("Don't render"), xorstr_("Outline"), xorstr_("Outline-solid"), xorstr_("Solid") }),
 					new CSlider(this, xorstr_("Glow on cats"), xorstr_("catconnect.glow.show.cats"), 0, 20, 1),
 					new CListBox(this, xorstr_("Remove unprintable"), xorstr_("catconnect.chat.removeunprintable"), { xorstr_("Don't remove"), xorstr_("Remove & process"), xorstr_("Full remove") })
 				}, GROUP_DEFAULT_WIDTH)

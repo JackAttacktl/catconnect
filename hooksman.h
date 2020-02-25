@@ -16,6 +16,7 @@ class IClientMode;
 class IPanel;
 class IViewPort;
 class IViewPortPanel;
+class CViewSetup;
 class CHudBaseChat;
 class IFileSystem;
 class old_bf_read;
@@ -70,6 +71,8 @@ private:
 	static bool __fastcall DispatchUserMessage(IBaseClientDLL * pThis, void * pDumbArg, int iMessageID, old_bf_read * pBFMessage);
 	static void __fastcall OnDeathNoticePaint(void * pThis, void * pDumbArg);
 	static Color * __fastcall OnDeathNoticeGetTeamColor(void * pThis, void * pDumbArg, Color * pClr, int iTeam, bool bLocalPlayer);
+	static bool __fastcall IsPlayingDemo(IClientMode * pThis, void * pDumbArg);
+	static bool __fastcall DoPostScreenSpaceEffects(IClientMode * pThis, void * pDumbArg, const CViewSetup * pSetup);
 	static LRESULT __stdcall OnWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 private:
