@@ -21,6 +21,7 @@
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include <sys/stat.h>
 
 NSCore::CSetting remove_newlines(xorstr_("catconnect.chat.removeunprintable"), xorstr_("1"));
 

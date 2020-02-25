@@ -4,6 +4,7 @@
 #include "materialsystem/MaterialSystemUtil.h"
 #include "ScreenSpaceEffects.h"
 #include "defs.h"
+#include "Color.h"
 
 class KeyValues;
 class IClientNetworkable;
@@ -12,6 +13,10 @@ namespace NSCore
 {
 	struct SRGBA
 	{
+		inline SRGBA() : r(0.0), g(0.0), b(0.0), a(255.0) {}
+		inline SRGBA(float flR, float flG, float flB) : r(flR), g(flG), b(flB), a(255.0) {}
+		inline SRGBA(float flR, float flG, float flB, float flA) : r(flR), g(flG), b(flB), a(flA) {}
+		inline SRGBA(Color clr) : r(clr.r()), g(clr.g()), b(clr.b()), a(clr.a()) {}
 		union
 		{
 			struct { float r, g, b, a; };

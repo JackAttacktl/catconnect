@@ -22,6 +22,7 @@ namespace SurfaceV30 { class ISurfaceFixed; }
 class IMaterialSystemFixed;
 class IVRenderView;
 class IVModelRender;
+class IFileSystem;
 
 namespace NSInterfaces
 {
@@ -44,6 +45,7 @@ namespace NSInterfaces
 	extern IMaterialSystemFixed * g_pMaterialSystemFixed;
 	extern IVRenderView * g_pRenderView;
 	extern IVModelRender * g_pModelRender;
+	extern IFileSystem * g_pFileSystem;
 
 	extern CGlobalVarsBase * g_pGlobals;
 	

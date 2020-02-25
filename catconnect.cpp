@@ -26,6 +26,9 @@
 #include "public/declarefix.h"
 #include "hud_basedeathnotice.h"
 #pragma pop_macro ("DECLARE_CLASS_SIMPLE")
+#include "inetchannel.h"
+#include "inetchannelinfo.h"
+#include "filesystem.h"
 
 #include <optional>
 #include <vector>
@@ -83,11 +86,6 @@ void CCatConnect::Init()
 
 	//print message about successful injection
 	NSUtils::PrintToClientConsole(Color{ 0, 255, 0, 255 }, xorstr_("[CatConnect] Successfuly injected!\n"));
-	NSGlobals::g_bCatConnectInited = true;
-
-	//Handle late injection
-	if (NSInterfaces::g_pEngineClient->IsInGame())
-		OnMapStart();
 
 	//and don't forget about timer!
 	ms_pCheckTimer = g_CTimerMan.CreateTimer(nullptr, 120.0);
@@ -101,6 +99,12 @@ void CCatConnect::Init()
 
 	ConVar * pVar = NSInterfaces::g_pCVar->FindVar(xorstr_("cl_vote_ui_active_after_voting"));
 	pVar->SetValue(1); //keep it active after voting
+
+	NSGlobals::g_bCatConnectInited = true;
+
+	//Handle late injection, this must be last call in this function!
+	if (NSInterfaces::g_pEngineClient->IsInGame())
+		OnMapStart();
 }
 
 void CCatConnect::Destroy()
@@ -329,6 +333,7 @@ std::string CCatConnect::OnChatMessage(int iClient, int iFilter, const char * pM
 
 void CCatConnect::OnMapStart()
 {
+	if (!NSGlobals::g_bCatConnectInited) return;
 	//reinit it here to fix gay black glow
 	NSCore::GlowCreate();
 	//we just joined
@@ -339,6 +344,7 @@ void CCatConnect::OnMapStart()
 
 void CCatConnect::OnMapEnd()
 {
+	if (!NSGlobals::g_bCatConnectInited) return;
 	NSCore::GlowDestroy();
 	SetVoteState();
 	ms_bIsVotingBack = false;
@@ -919,7 +925,7 @@ Color CCatConnect::GetStateColor(ECatState eState)
 	switch (eState)
 	{
 	case CatState_Cat:
-		return Color(0, 255, 0, 255);
+		return Color(178, 140, 255, 255);
 	case CatState_Friend:
 	case CatState_Party:
 		return Color(0, 213, 153, 255);

@@ -57,7 +57,7 @@ void NSMenu::CMenu::CreateGUI()
 				}, GROUP_DEFAULT_WIDTH),
 			new CGroupBox(this, xorstr_("Visual"),
 				{
-					new CSlider(this, xorstr_("Glow on cats"), xorstr_("catconnect.glow.show.cats"), 0, 10, 1),
+					new CSlider(this, xorstr_("Glow on cats"), xorstr_("catconnect.glow.show.cats"), 0, 20, 1),
 					new CListBox(this, xorstr_("Remove unprintable"), xorstr_("catconnect.chat.removeunprintable"), { xorstr_("Don't remove"), xorstr_("Remove & process"), xorstr_("Full remove") })
 				}, GROUP_DEFAULT_WIDTH)
 			}));

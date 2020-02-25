@@ -33,6 +33,7 @@ public:
 	static void FASTERCALL OnDeathNoticePaintPre(void * pThis);
 	static inline void SetVoteState(unsigned int iValue = 0) { ms_iCurrentVoteChoice = iValue; }
 	static bool FASTERCALL IsVotingBack(int iReason, int iSeconds);
+	static Color FASTERCALL GetStateColor(ECatState);
 
 private:
 	class CAchievementListener : public IGameEventListener2
@@ -64,7 +65,6 @@ private:
 	static uint8_t FASTERCALL GetSavedState(int iIndex);
 	static bool FASTERCALL InSameParty(int iIndex);
 	static inline Color GetClientColor(int iClient) { return GetStateColor(GetClientState(iClient)); }
-	static Color FASTERCALL GetStateColor(ECatState);
 	static bool FASTERCALL ShouldChangeColor(int iClient);
 	static void FASTERCALL NotifyCat(int iClient);
 	static void FASTERCALL MarkAsToVoteBack(uint32_t iSteamID3);

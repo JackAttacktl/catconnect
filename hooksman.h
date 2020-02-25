@@ -7,6 +7,7 @@
 #include "vmt.h"
 #include "defs.h"
 #include "inputsystem/buttoncode.h"
+#include "filesystem.h"
 
 class CUserCmd;
 class IBaseClientDLL;
@@ -16,6 +17,7 @@ class IPanel;
 class IViewPort;
 class IViewPortPanel;
 class CHudBaseChat;
+class IFileSystem;
 class old_bf_read;
 
 enum VMTHookNum : uint8_t
@@ -27,7 +29,8 @@ enum VMTHookNum : uint8_t
 	VMT_VIEWPORT,
 	VMT_SCOREBOARD,
 	VMT_DEATHNOTICE,
-	VMT_DEATHNOTICE_PANEL
+	VMT_DEATHNOTICE_PANEL,
+	VMT_FILESYSTEM
 };
 
 namespace vgui { typedef unsigned int VPANEL; }

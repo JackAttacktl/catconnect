@@ -13,7 +13,8 @@
 #include "ivmodelrender.h"
 #include "settings/settings.h"
 
-NSCore::CSetting glow_showoncats(xorstr_("catconnect.glow.show.cats"), xorstr_("5"));
+NSCore::CSetting glow_showoncats(xorstr_("catconnect.glow.show.cats"), xorstr_("10"));
+NSCore::CSetting glow_how(xorstr_("catconnect.glow.howrender"), xorstr_("1"));
 
 CScreenSpaceEffectRegistration * CScreenSpaceEffectRegistration::s_pHead = nullptr;
 IScreenSpaceEffectManager * g_pScreenSpaceEffects = nullptr;
@@ -82,6 +83,7 @@ ITexture * GetBuffer(int i)
 }
 
 static SShaderStencilState SS_NeverSolid;
+static SShaderStencilState SS_InvisibleSolid;
 static SShaderStencilState SS_Null;
 static SShaderStencilState SS_Drawing;
 
@@ -98,70 +100,68 @@ void NSCore::CGlowEffect::Init()
     if (m_bInited)
         return;
 
-    {
-        KeyValues * pKV = new KeyValues(xorstr_("UnlitGeneric"));
-        pKV->SetString(xorstr_("$basetexture"), xorstr_("vgui/white_additive"));
-        pKV->SetInt(xorstr_("$ignorez"), 0);
-        m_CMatUnlit.Init(xorstr_("__cat_glow_unlit"), pKV);
-    }
+    KeyValues * pKV = nullptr;
 
-    {
-        KeyValues * pKV = new KeyValues(xorstr_("UnlitGeneric"));
-        pKV->SetString(xorstr_("$basetexture"), xorstr_("vgui/white_additive"));
-        pKV->SetInt(xorstr_("$ignorez"), 1);
-        m_CMatUnlitZ.Init(xorstr_("__cat_glow_unlit_z"), pKV);
-    }
+    pKV = new KeyValues(xorstr_("UnlitGeneric"));
+    pKV->SetString(xorstr_("$basetexture"), xorstr_("vgui/white_additive"));
+    pKV->SetInt(xorstr_("$ignorez"), 0);
+    m_CMatUnlit.Init(xorstr_("__cat_glow_unlit"), pKV);
+    m_CMatUnlit->Refresh();
+
+    pKV = new KeyValues(xorstr_("UnlitGeneric"));
+    pKV->SetString(xorstr_("$basetexture"), xorstr_("vgui/white_additive"));
+    pKV->SetInt(xorstr_("$ignorez"), 1);
+    m_CMatUnlitZ.Init(xorstr_("__cat_glow_unlit_z"), pKV);
+    m_CMatUnlitZ->Refresh();
 
     // Initialize 2 buffers
     GetBuffer(0);
     GetBuffer(1);
 
-    {
-        KeyValues * pKV = new KeyValues(xorstr_("UnlitGeneric"));
-        pKV->SetString(xorstr_("$basetexture"), xorstr_("_cat_buff0"));
-        pKV->SetInt(xorstr_("$additive"), 1);
-        m_CMatBlit.Init(xorstr_("__cat_glow_blit"), xorstr_(TEXTURE_GROUP_CLIENT_EFFECTS), pKV);
-        m_CMatBlit->Refresh();
-    }
+    pKV = new KeyValues(xorstr_("UnlitGeneric"));
+    pKV->SetString(xorstr_("$basetexture"), xorstr_("_cat_buff0"));
+    pKV->SetInt(xorstr_("$additive"), 1);
+    m_CMatBlit.Init(xorstr_("__cat_glow_blit"), xorstr_(TEXTURE_GROUP_CLIENT_EFFECTS), pKV);
+    m_CMatBlit->Refresh();
 
-    {
-        KeyValues * pKV = new KeyValues(xorstr_("BlurFilterX"));
-        pKV->SetString(xorstr_("$basetexture"), xorstr_("_cat_buff0"));
-        pKV->SetInt(xorstr_("$ignorez"), 1);
-        pKV->SetInt(xorstr_("$translucent"), 1);
-        pKV->SetInt(xorstr_("$alphatest"), 1);
-        m_CMatBlurX.Init(xorstr_("_cat_blurx"), pKV);
-        m_CMatBlurX->Refresh();
-    }
+    pKV = new KeyValues(xorstr_("BlurFilterX"));
+    pKV->SetString(xorstr_("$basetexture"), xorstr_("_cat_buff0"));
+    pKV->SetInt(xorstr_("$ignorez"), 1);
+    pKV->SetInt(xorstr_("$translucent"), 1);
+    pKV->SetInt(xorstr_("$alphatest"), 1);
+    m_CMatBlurX.Init(xorstr_("_cat_blurx"), pKV);
+    m_CMatBlurX->Refresh();
 
-    {
-        KeyValues * pKV = new KeyValues(xorstr_("BlurFilterY"));
-        pKV->SetString(xorstr_("$basetexture"), xorstr_("_cat_buff1"));
-        pKV->SetInt(xorstr_("$bloomamount"), 5);
-        pKV->SetInt(xorstr_("$ignorez"), 1);
-        pKV->SetInt(xorstr_("$translucent"), 1);
-        pKV->SetInt(xorstr_("$alphatest"), 1);
-        m_CMatBlurY.Init(xorstr_("_cat_blury"), pKV);
-        m_CMatBlurY->Refresh();
-    }
+    pKV = new KeyValues(xorstr_("BlurFilterY"));
+    pKV->SetString(xorstr_("$basetexture"), xorstr_("_cat_buff1"));
+    pKV->SetInt(xorstr_("$bloomamount"), 5);
+    pKV->SetInt(xorstr_("$ignorez"), 1);
+    pKV->SetInt(xorstr_("$translucent"), 1);
+    pKV->SetInt(xorstr_("$alphatest"), 1);
+    m_CMatBlurY.Init(xorstr_("_cat_blury"), pKV);
+    m_CMatBlurY->Refresh();
 
-    {
-        SS_NeverSolid.m_bEnable = true;
-        SS_NeverSolid.m_PassOp = STENCILOPERATION_REPLACE;
-        SS_NeverSolid.m_FailOp = STENCILOPERATION_KEEP;
-        SS_NeverSolid.m_ZFailOp = STENCILOPERATION_KEEP;
-        SS_NeverSolid.m_CompareFunc = STENCILCOMPARISONFUNCTION_ALWAYS;
-        SS_NeverSolid.m_nWriteMask = 1;
-        SS_NeverSolid.m_nReferenceValue = 1;
-    }
+    SS_NeverSolid.m_bEnable = true;
+    SS_NeverSolid.m_PassOp = STENCILOPERATION_REPLACE;
+    SS_NeverSolid.m_FailOp = STENCILOPERATION_KEEP;
+    SS_NeverSolid.m_ZFailOp = STENCILOPERATION_KEEP;
+    SS_NeverSolid.m_CompareFunc = STENCILCOMPARISONFUNCTION_ALWAYS;
+    SS_NeverSolid.m_nWriteMask = 1;
+    SS_NeverSolid.m_nReferenceValue = 1;
 
-    {
-        SS_Drawing.m_bEnable = true;
-        SS_Drawing.m_nReferenceValue = 0;
-        SS_Drawing.m_nTestMask = 1;
-        SS_Drawing.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;
-        SS_Drawing.m_PassOp = STENCILOPERATION_ZERO;
-    }
+    SS_InvisibleSolid.m_bEnable = true;
+    SS_InvisibleSolid.m_PassOp = STENCILOPERATION_REPLACE;
+    SS_InvisibleSolid.m_FailOp = STENCILOPERATION_KEEP;
+    SS_InvisibleSolid.m_ZFailOp = STENCILOPERATION_KEEP;
+    SS_InvisibleSolid.m_CompareFunc = STENCILCOMPARISONFUNCTION_ALWAYS;
+    SS_InvisibleSolid.m_nWriteMask = 1;
+    SS_InvisibleSolid.m_nReferenceValue = 1;
+
+    SS_Drawing.m_bEnable = true;
+    SS_Drawing.m_nReferenceValue = 0;
+    SS_Drawing.m_nTestMask = 1;
+    SS_Drawing.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;
+    SS_Drawing.m_PassOp = STENCILOPERATION_ZERO;
 
     m_bInited = true;
 }
@@ -181,23 +181,37 @@ void NSCore::CGlowEffect::Shutdown()
 
 NSCore::SRGBA NSCore::CGlowEffect::GlowColor(IClientNetworkable * pClientNetworkable)
 {
+    auto GetColorFromRGBA = [](SRGBA sClr) -> SRGBA
+    {
+        sClr.r /= 255.0;
+        sClr.g /= 255.0;
+        sClr.b /= 255.0;
+        sClr.a /= 255.0;
+        return sClr;
+    };
+
     IClientUnknown * pUnk = pClientNetworkable->GetIClientUnknown();
-    if (!pUnk || pClientNetworkable->IsDormant()) return SRGBA{ 255.0, 255.0, 255.0, 255.0 };
+    static const SRGBA SDefaultColor = SRGBA{ 1.0, 1.0, 1.0, 1.0 };
+    static SRGBA SReturnColor = SDefaultColor;
+    if (!pUnk || pClientNetworkable->IsDormant()) return SDefaultColor;
     NSReclass::CBaseEntity * pEnt = (NSReclass::CBaseEntity *)pUnk->GetBaseEntity();
-    if (!pEnt) return SRGBA{ 255.0, 255.0, 255.0, 255.0 };
+    if (!pEnt) return SDefaultColor;
 
     if (((NSReclass::CBaseCombatWeapon *)pEnt)->IsBaseCombatWeapon())
-        return SRGBA{ 255.0, 255.0, 255.0, 255.0 }; //white color for weapons
+        return SDefaultColor; //white color for weapons
 
     if (pEnt->IsPlayer())
-        return SRGBA{ 0.0, 255.0, 0, 255.0 }; //since we draw only bots, they should have green color
-
-    return SRGBA{ 255.0, 255.0, 255.0, 255.0 };
+    {
+        SReturnColor = GetColorFromRGBA(SRGBA(CCatConnect::GetStateColor(CatState_Cat)));
+        return SReturnColor; //we draw only cats
+    }
+    
+    return SDefaultColor;
 }
 
 bool NSCore::CGlowEffect::ShouldRenderGlow(IClientNetworkable * pClientNetworkable)
 {
-    if (!glow_showoncats.GetBool())
+    if (!glow_showoncats.GetBool() || !glow_how.GetBool())
         return false;
 
     if (pClientNetworkable->entindex() < 0)
@@ -219,8 +233,8 @@ bool NSCore::CGlowEffect::ShouldRenderGlow(IClientNetworkable * pClientNetworkab
     if (pEnt->IsPlayer())
     {
         ECatState eState = CCatConnect::GetClientState(pClientNetworkable->entindex());
-        if (eState != ECatState::CatState_Cat)
-            return false;
+        //if (eState != ECatState::CatState_Cat)
+        //    return false;
         if (!pEnt->IsPlayerAlive())
             return false;
         return true;
@@ -241,6 +255,7 @@ void NSCore::CGlowEffect::BeginRenderGlow()
     CMatRenderContextPtr pRenderContext(NSInterfaces::g_pMaterialSystemFixed->GetRenderContext());
     pRenderContext->ClearColor4ub(0, 0, 0, 0);
     pRenderContext->PushRenderTargetAndViewport();
+    NSInterfaces::g_pModelRender->SuppressEngineLighting(true);
     pRenderContext->SetRenderTarget(GetBuffer(0));
     pRenderContext->OverrideAlphaWriteEnable(true, true);
     NSInterfaces::g_pRenderView->SetBlend(0.99f);
@@ -255,6 +270,7 @@ void NSCore::CGlowEffect::EndRenderGlow()
     CMatRenderContextPtr ptr(NSInterfaces::g_pMaterialSystemFixed->GetRenderContext());
     ptr->DepthRange(0.0f, 1.0f);
     NSInterfaces::g_pModelRender->ForcedMaterialOverride(nullptr);
+    NSInterfaces::g_pModelRender->SuppressEngineLighting(false);
     ptr->PopRenderTargetAndViewport();
 }
 
@@ -264,11 +280,21 @@ void NSCore::CGlowEffect::StartStenciling()
     sState.Reset();
     sState.m_bEnable = true;
     CMatRenderContextPtr pRenderContext(NSInterfaces::g_pMaterialSystemFixed->GetRenderContext());
-    SS_NeverSolid.SetStencilState(pRenderContext);
-    pRenderContext->DepthRange(0.0f, 0.01f);
     NSInterfaces::g_pRenderView->SetBlend(0.0f);
-    m_CMatUnlit->AlphaModulate(1.0f);
-    NSInterfaces::g_pModelRender->ForcedMaterialOverride(m_CMatUnlitZ);
+    switch (glow_how.GetInt())
+    {
+        case 1:
+            SS_NeverSolid.SetStencilState(pRenderContext);
+            pRenderContext->DepthRange(0.0f, 0.01f);
+            NSInterfaces::g_pModelRender->ForcedMaterialOverride(m_CMatUnlitZ);
+            break;
+        case 2:
+            SS_InvisibleSolid.SetStencilState(pRenderContext);
+            pRenderContext->DepthRange(0.0f, 1.0f);
+            m_CMatUnlit->AlphaModulate(1.0f);
+            NSInterfaces::g_pModelRender->ForcedMaterialOverride(m_CMatUnlit);
+            break;
+    }
 }
 
 void NSCore::CGlowEffect::EndStenciling()
@@ -328,12 +354,13 @@ void NSCore::CGlowEffect::DrawEntity(IClientNetworkable * pEnt)
 
 void NSCore::CGlowEffect::Render(int iX, int iY, int iWidth, int iHeight)
 {
-    if (!glow_showoncats.GetBool())
+    if (!glow_showoncats.GetBool() || !glow_how.GetBool())
         return;
 
     static ITexture * pOriginal;
     static IClientEntity * pEnt;
     static IMaterialVar * pBluryBloomamout;
+    //static IMaterialVar * pBlurXBloomscale;
 
     if (!m_bInited)
         Init();
@@ -368,7 +395,9 @@ void NSCore::CGlowEffect::Render(int iX, int iY, int iWidth, int iHeight)
     pRenderContext->SetRenderTarget(GetBuffer(0));
 
     pBluryBloomamout = m_CMatBlurY->FindVar(xorstr_("$bloomamount"), nullptr);
-    pBluryBloomamout->SetIntValue(glow_showoncats.GetInt());
+    pBluryBloomamout->SetFloatValue(glow_showoncats.GetFloat() / 2);
+    //pBlurXBloomscale = m_CMatBlurX->FindVar(xorstr_("$bloomscale"), nullptr);
+    //pBlurXBloomscale->SetFloatValue(glow_showoncats.GetFloat() / 2);
 
     pRenderContext->DrawScreenSpaceRectangle(m_CMatBlurY, iX, iY, iWidth, iHeight, 0, 0, iWidth - 1, iHeight - 1, iWidth, iHeight);
     pRenderContext->Viewport(iX, iY, iWidth, iHeight);
@@ -383,7 +412,7 @@ void NSCore::CGlowEffect::Render(int iX, int iY, int iWidth, int iHeight)
 void NSCore::GlowInit()
 {
     g_pGlowEffect = new CScreenSpaceEffectRegistration(xorstr_("_catglow"), &m_CGlowEffect);
-    g_pScreenSpaceEffects->EnableScreenSpaceEffect(xorstr_("_catglow"));
+    g_pScreenSpaceEffects->EnableScreenSpaceEffect(xorstr_("_catglow")); //we also need to call DisableScreenSpaceEffect. Also better do it in OnMapStart
 }
 
 void NSCore::GlowCreate()

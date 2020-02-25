@@ -15,6 +15,7 @@
 #include "ivrenderview.h"
 #include "ivmodelrender.h"
 #include "inputsystem/iinputsystem.h"
+#include "filesystem.h"
 #include "e8call.h"
 #include "settings/settings.h"
 #include "vgui/ISurfaceV30.h"
@@ -129,6 +130,7 @@ void NSInterfaces::InitInterfaces()
 	CreateInterfaceFn pValveSTDLibFactory = nullptr;
 	CreateInterfaceFn pInputSysFactory = nullptr;
 	CreateInterfaceFn pMatSystemFactory = nullptr;
+	CreateInterfaceFn pFileSystemFactory = nullptr;
 	//SteamCreateInterfaceFn pSteamAPIFactory = nullptr;
 	{
 		WaitForModule(xorstr_("client.dll"));
@@ -138,6 +140,7 @@ void NSInterfaces::InitInterfaces()
 		WaitForModule(xorstr_("steam_api.dll"));
 		WaitForModule(xorstr_("vguimatsurface.dll"));
 		WaitForModule(xorstr_("inputsystem.dll"));
+		WaitForModule(xorstr_("FileSystem_Stdio.dll"));
 		WaitForModule(xorstr_("MaterialSystem.dll"));
 		WaitForModule(xorstr_("GameUI.dll"));
 	}
@@ -150,6 +153,7 @@ void NSInterfaces::InitInterfaces()
 		pValveSTDLibFactory = (CreateInterfaceFn)(WaitForExternal(xorstr_("vstdlib.dll"), sCrIface.crypt_get()));
 		pInputSysFactory = (CreateInterfaceFn)(WaitForExternal(xorstr_("inputsystem.dll"), sCrIface.crypt_get()));
 		pMatSystemFactory = (CreateInterfaceFn)(WaitForExternal(xorstr_("MaterialSystem.dll"), sCrIface.crypt_get()));
+		pFileSystemFactory = (CreateInterfaceFn)(WaitForExternal(xorstr_("FileSystem_Stdio.dll"), sCrIface.crypt_get()));
 		//pSteamAPIFactory = (SteamCreateInterfaceFn)(WaitForExternal(xorstr_("steamapi.dll"), xorstr_("SteamInternal_CreateInterface")));
 	}
 	
@@ -166,6 +170,7 @@ void NSInterfaces::InitInterfaces()
 	g_pMaterialSystemFixed = (IMaterialSystemFixed *)(WaitForInterface(pMatSystemFactory, xorstr_(MATERIAL_SYSTEM_INTERFACE_VERSION_81)));
 	g_pRenderView = (IVRenderView *)(WaitForInterface(pEngineFactory, xorstr_(VENGINE_RENDERVIEW_INTERFACE_VERSION)));
 	g_pModelRender = (IVModelRender *)(WaitForInterface(pEngineFactory, xorstr_(VENGINE_HUDMODEL_INTERFACE_VERSION)));
+	g_pFileSystem = (IFileSystem *)(WaitForInterface(pFileSystemFactory, xorstr_(FILESYSTEM_INTERFACE_VERSION)));
 	
 	g_pClientModeShared = (IClientMode *)WaitForObjectAllocationAndInitialization((void **)*(IClientMode ***)((*(int **)g_pClient)[10] + 0x5), true); //probably get it from signature?
 	g_pHud = (NSReclass::CHud *)WaitForObjectAllocationAndInitialization((void **)(NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x8B\x01\x8B\x40\x24\xFF\xD0\x8B\xC8\xE8\x2A\x2A\x2A\x2A\x68\x2A\x2A\x2A\x2A\xB9\x2A\x2A\x2A\x2A\xE8\x2A\x2A\x2A\x2A\x85\xC0"), 31) + 20), false);
@@ -237,4 +242,5 @@ SurfaceV30::ISurfaceFixed * NSInterfaces::g_pSurface = nullptr;
 IMaterialSystemFixed * NSInterfaces::g_pMaterialSystemFixed = nullptr;
 IVRenderView * NSInterfaces::g_pRenderView = nullptr;
 IVModelRender * NSInterfaces::g_pModelRender = nullptr;
+IFileSystem * NSInterfaces::g_pFileSystem = nullptr;
 CGlobalVarsBase * NSInterfaces::g_pGlobals = nullptr;
