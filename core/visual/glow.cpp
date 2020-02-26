@@ -84,6 +84,7 @@ ITexture * GetBuffer(int i)
 
 static SShaderStencilState SS_NeverSolid;
 static SShaderStencilState SS_InvisibleSolid;
+//static SShaderStencilState SS_VisibleSolid;
 static SShaderStencilState SS_Drawing;
 static SShaderStencilState SS_Null;
 
@@ -157,6 +158,14 @@ void NSCore::CGlowEffect::Init()
     SS_InvisibleSolid.m_nWriteMask = 1;
     SS_InvisibleSolid.m_nReferenceValue = 1;
 
+    /*SS_VisibleSolid.m_bEnable = true;
+    SS_VisibleSolid.m_PassOp = STENCILOPERATION_KEEP;
+    SS_VisibleSolid.m_FailOp = STENCILOPERATION_REPLACE;
+    SS_VisibleSolid.m_ZFailOp = STENCILOPERATION_REPLACE;
+    SS_VisibleSolid.m_CompareFunc = STENCILCOMPARISONFUNCTION_NOTEQUAL;
+    SS_VisibleSolid.m_nWriteMask = 1;
+    SS_VisibleSolid.m_nReferenceValue = 1;*/
+
     SS_Drawing.m_bEnable = true;
     SS_Drawing.m_nReferenceValue = 0;
     SS_Drawing.m_nTestMask = 1;
@@ -202,7 +211,7 @@ NSCore::SRGBA NSCore::CGlowEffect::GlowColor(IClientNetworkable * pClientNetwork
 
     if (pEnt->IsPlayer())
     {
-        SReturnColor = GetColorFromRGBA(SRGBA(CCatConnect::GetStateColor(CatState_Cat)));
+        SReturnColor = GetColorFromRGBA(SRGBA(CCatConnect::GetStateColor(CatState_Cat, pEnt->GetTeam())));
         return SReturnColor; //we draw only cats
     }
     
@@ -294,6 +303,15 @@ void NSCore::CGlowEffect::StartStenciling()
             m_CMatUnlit->AlphaModulate(1.0f);
             NSInterfaces::g_pModelRender->ForcedMaterialOverride(m_CMatUnlit);
             break;
+        /*case 3: //WHAT THE FUCK IS THAT https://i.imgur.com/d5sAhDV.png
+        {
+            SS_VisibleSolid.SetStencilState(pRenderContext);
+            pRenderContext->DepthRange(0.0f, 1.0f);
+            m_CMatUnlit->AlphaModulate(1.0f);
+            NSInterfaces::g_pModelRender->ForcedMaterialOverride(m_CMatUnlit);
+            break;
+        }
+        case 4:*/
         case 3:
             SS_Drawing.SetStencilState(pRenderContext);
             pRenderContext->DepthRange(0.0f, 1.0f);

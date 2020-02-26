@@ -35,7 +35,7 @@ public:
 	static bool FASTERCALL OnPlayingDemoCheck(bool &bResult); //this hook used to prevent CGlowObjectManager from drawing outlines
 	static inline void SetVoteState(unsigned int iValue = 0) { ms_iCurrentVoteChoice = iValue; }
 	static bool FASTERCALL IsVotingBack(int iReason, int iSeconds);
-	static Color FASTERCALL GetStateColor(ECatState);
+	static Color FASTERCALL GetStateColor(ECatState, int iTeam);
 
 private:
 	class CAchievementListener : public IGameEventListener2
@@ -66,7 +66,7 @@ private:
 	static void FASTERCALL SendCatMessage(int iMessage);
 	static uint8_t FASTERCALL GetSavedState(int iIndex);
 	static bool FASTERCALL InSameParty(int iIndex);
-	static inline Color GetClientColor(int iClient) { return GetStateColor(GetClientState(iClient)); }
+	static inline Color GetClientColor(int iClient, int iTeam) { return GetStateColor(GetClientState(iClient), iTeam); }
 	static bool FASTERCALL ShouldChangeColor(int iClient);
 	static void FASTERCALL NotifyCat(int iClient);
 	static void FASTERCALL MarkAsToVoteBack(uint32_t iSteamID3);

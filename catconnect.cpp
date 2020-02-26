@@ -55,6 +55,7 @@ NSCore::CSetting scoreboard_showfriends(xorstr_("catconnect.scoreboard.showfrien
 NSCore::CSetting deathnotice_changecolors(xorstr_("catconnect.deathnotice.changecolors"), xorstr_("1"));
 NSCore::CSetting glow_suppresstfglow(xorstr_("catconnect.glow.suppress.stocks"), xorstr_("1"));
 NSCore::CSetting debug_show(xorstr_("catconnect.showdebug"), xorstr_("0"));
+extern NSCore::CSetting remove_newlines;
 
 struct SSavedCat
 {
@@ -175,7 +176,8 @@ void CCatConnect::OnScoreBoardUpdate(void * pThis)
 
 				//if he is a CAT, then set his color to green on scoreboard and show his class
 
-				Color cScoreBoardColor = GetStateColor(eClientState);
+				int iClientTeam = NSReclass::g_pCTFPlayerResource->GetPlayerTeam(iClient);
+				Color cScoreBoardColor = GetStateColor(eClientState, iClientTeam);
 
 				IClientNetworkable * pNetworkable = NSInterfaces::g_pClientEntityList->GetClientNetworkable(iClient);
 				IClientUnknown * pUnknown = nullptr;
@@ -184,11 +186,11 @@ void CCatConnect::OnScoreBoardUpdate(void * pThis)
 					NSReclass::CBaseEntity * pClientEnt = (NSReclass::CBaseEntity *)pUnknown->GetBaseEntity();
 					if (pClientEnt) //valid client
 					{
+						bool bModifyItem = false;
 						bool bAlive = NSReclass::g_pCTFPlayerResource->IsPlayerAlive(iClient);
 						if (!bAlive)
 							cScoreBoardColor[3] /= 3;
 						NSReclass::CBaseEntity * pMySelf = (NSReclass::CBaseEntity *)NSGlobals::g_pLocalPlayer;
-						int iClientTeam = NSReclass::g_pCTFPlayerResource->GetPlayerTeam(iClient);
 						if (eClientState == CatState_Cat && pMySelf && pMySelf->GetTeam() != iClientTeam && iClientTeam > 1) //2 == red, 3 == blue
 						{
 							int iClass = NSReclass::g_pCTFPlayerResource->GetPlayerClass(iClient);
@@ -199,6 +201,23 @@ void CCatConnect::OnScoreBoardUpdate(void * pThis)
 								iClassEmblem = *(int *)((char *)pRealThis + 0x384 + iClass * 4);
 							//It's not a cheat! Show class of CATs only, not fake cats!
 							pKV->SetInt(xorstr_("class"), iClassEmblem);
+							bModifyItem = true;
+						}
+
+						if (remove_newlines.GetBool())
+						{
+							const char * pName = pKV->GetString(xorstr_("name"), "");
+							if (*pName)
+							{
+								std::string sName = pName;
+								RemoveUnprintable(sName);
+								pKV->SetString(xorstr_("name"), sName.c_str());
+								bModifyItem = true;
+							}
+						}
+
+						if (bModifyItem)
+						{
 							//we need to create new instance of KeyValues cuz old will be deleted
 							KeyValues * pNewKV = pKV->MakeCopy();
 							CALL_VFUNC_OFFS(bool (__thiscall *)(void * pThis, int iItem, int iSection, const KeyValues * pKV), pCurrentList, 224)(pCurrentList, iItemID, 0, pNewKV); //ModifyItem
@@ -295,16 +314,28 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 
 		if (sMsg.Killer.szName[0])
 		{
+			if (remove_newlines.GetBool())
+			{
+				std::string sName = sMsg.Killer.szName;
+				RemoveUnprintable(sName);
+				strcpy(sMsg.Killer.szName, sName.c_str());
+			}
 			int iKillerClient = NSInterfaces::g_pEngineClient->GetPlayerForUserID(sMsg.iKillerID);
-			ms_vColors.push_back(ShouldChangeColor(iKillerClient) ? GetClientColor(iKillerClient) : Color(0, 0, 0, 0));
+			ms_vColors.push_back(ShouldChangeColor(iKillerClient) ? GetClientColor(iKillerClient, sMsg.Killer.iTeam) : Color(0, 0, 0, 0));
 		}
 		else if (ShouldAddDummyColor(sMsg, true))
 			ms_vColors.push_back(Color(0, 0, 0, 0));
 
 		if (sMsg.Victim.szName[0])
 		{
+			if (remove_newlines.GetBool())
+			{
+				std::string sName = sMsg.Victim.szName;
+				RemoveUnprintable(sName);
+				strcpy(sMsg.Victim.szName, sName.c_str());
+			}
 			int iVictimClient = NSInterfaces::g_pEngineClient->GetPlayerForUserID(sMsg.iVictimID);
-			ms_vColors.push_back(ShouldChangeColor(iVictimClient) ? GetClientColor(iVictimClient) : Color(0, 0, 0, 0));
+			ms_vColors.push_back(ShouldChangeColor(iVictimClient) ? GetClientColor(iVictimClient, sMsg.Victim.iTeam) : Color(0, 0, 0, 0));
 		}
 		else if (ShouldAddDummyColor(sMsg, false))
 			ms_vColors.push_back(Color(0, 0, 0, 0));
@@ -391,23 +422,67 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 		}
 	};
 
+	auto GetPlayerPrefixPrint = [](ECatState eState, bool bFirstUpper) -> std::string
+	{
+		std::string sToRet = xorstr_("player");
+		switch (eState)
+		{
+		case CatState_Friend:
+			sToRet = xorstr_("friend");
+			break;
+		case CatState_Party:
+			sToRet = xorstr_("party");
+			break;
+		case CatState_Cat:
+			sToRet = xorstr_("CAT");
+			break;
+		case CatState_FakeCat:
+			sToRet = xorstr_("fake CAT");
+			break;
+		}
+
+		if (bFirstUpper)
+			sToRet[0] = (char)std::toupper((unsigned char)sToRet[0]);
+		return sToRet;
+	};
+
 	player_info_t sInfoTarget, sInfoCaller;
 	auto pMySelf = ((NSReclass::CBaseEntity *)NSGlobals::g_pLocalPlayer);
 
 	if (iCaller <= 0 || iTarget <= 0 || !pMySelf || !NSInterfaces::g_pEngineClient->GetPlayerInfo(iTarget, &sInfoTarget) || !NSInterfaces::g_pEngineClient->GetPlayerInfo(iCaller, &sInfoCaller))
 		return;
 
+	ECatState eTargetState = GetClientState(iTarget);
+	ECatState eCallerState = GetClientState(iCaller);
+
+	std::string sTargetPrefix = GetPlayerPrefixPrint(eTargetState, false);
+	std::string sCallerPrefix = GetPlayerPrefixPrint(eCallerState, true);
+
+	std::string sTargetName = sInfoTarget.name;
+	std::string sCallerName = sInfoCaller.name;
+
+	if (remove_newlines.GetBool())
+	{
+		RemoveUnprintable(sTargetName);
+		RemoveUnprintable(sCallerName);
+	}
+
 	if (iTeam != pMySelf->GetTeam())
 	{
 		if (iTeam > 1)
 		{
-			ECatState eTargetState = GetClientState(iTarget);
-			ECatState eCallerState = GetClientState(iCaller);
 			if (ShouldMarkAsVoteBack(eCallerState) && !ShouldMarkAsVoteBack(eTargetState))
 			{
+				if (votekicks_manage.GetInt() == 2)
+				{
+					if (eCallerState != CatState_VoteBack)
+						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) from enemy team started a vote against %s %s ([U:1:%u]), and has been marked as to \"voteback\", and will be kicked when possible."), sCallerPrefix.c_str(), sCallerName.c_str(), sInfoCaller.friendsID, sTargetPrefix.c_str(), sTargetName.c_str(), sInfoTarget.friendsID);
+					else
+						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) from enemy team started a vote against %s %s ([U:1:%u])."), sCallerPrefix.c_str(), sCallerName.c_str(), sInfoCaller.friendsID, sTargetPrefix.c_str(), sTargetName.c_str(), sInfoTarget.friendsID);
+				}
+				else
+					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) from enemy team started a vote against %s %s ([U:1:%u])."), sCallerPrefix.c_str(), sCallerName.c_str(), sInfoCaller.friendsID, sTargetPrefix.c_str(), sTargetName.c_str(), sInfoTarget.friendsID);
 				MarkAsToVoteBack(sInfoCaller.friendsID);
-				if (votekicks_manage.GetInt() == 2 && eCallerState != CatState_VoteBack)
-					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) from enemy team has been marked as to \"voteback\" and will be kicked when possible."), sInfoCaller.name, sInfoCaller.friendsID);
 			}
 		}
 		return;
@@ -418,7 +493,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 		SetVoteState(1);
 		if (ms_bIsVotingBack)
 		{
-			NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Calling a vote on player %s ([U:1:%u]) (Player has \"voteback\" status)."), sInfoTarget.name, sInfoTarget.friendsID);
+			NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Calling a vote on %s %s ([U:1:%u]) because of \"voteback\" status."), sTargetPrefix.c_str(), sTargetName.c_str(), sInfoTarget.friendsID);
 			ms_bIsVotingBack = false;
 		}
 		return;
@@ -429,14 +504,11 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 
 	if (iTarget != NSInterfaces::g_pEngineClient->GetLocalPlayer())
 	{
-		ECatState eTargetState = GetClientState(iTarget);
-		ECatState eCallerState = GetClientState(iCaller);
-
 		switch (eTargetState)
 		{
 			case CatState_Cat:
 			{
-				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) trying to kick CAT %s ([U:1:%u])! Voting no."), sInfoCaller.name, sInfoCaller.friendsID, sInfoTarget.name, sInfoTarget.friendsID);
+				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) trying to kick CAT %s ([U:1:%u])! Voting no."), sCallerPrefix.c_str(), sCallerName.c_str(), sInfoCaller.friendsID, sTargetName.c_str(), sInfoTarget.friendsID);
 				strcpy(pVoteOption, xorstr_("vote option2"));
 				NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 				pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -446,7 +518,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 			}
 			case CatState_Friend:
 			{
-				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) trying to kick friend %s ([U:1:%u])! Voting no."), sInfoCaller.name, sInfoCaller.friendsID, sInfoTarget.name, sInfoTarget.friendsID);
+				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) trying to kick friend %s ([U:1:%u])! Voting no."), sCallerPrefix.c_str(), sCallerName.c_str(), sInfoCaller.friendsID, sTargetName.c_str(), sInfoTarget.friendsID);
 				strcpy(pVoteOption, xorstr_("vote option2"));
 				NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 				pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -456,7 +528,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 			}
 			case CatState_VoteBack:
 			{
-				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) trying to kick player %s ([U:1:%u])! Voting yes."), sInfoCaller.name, sInfoCaller.friendsID, sInfoTarget.name, sInfoTarget.friendsID);
+				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) trying to kick player %s ([U:1:%u])! Voting yes."), sCallerPrefix.c_str(), sCallerName.c_str(), sInfoCaller.friendsID, sTargetName.c_str(), sInfoTarget.friendsID);
 				strcpy(pVoteOption, xorstr_("vote option1"));
 				NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 				pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -471,13 +543,13 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 					{
 						if (InSameParty(sInfoCaller.friendsID))
 						{
-							NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Friend %s ([U:1:%u]) trying to kick party member %s ([U:1:%u])! Voting yes."), sInfoCaller.name, sInfoCaller.friendsID, sInfoTarget.name, sInfoTarget.friendsID);
+							NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Friend %s ([U:1:%u]) trying to kick party member %s ([U:1:%u])! Voting yes."), sCallerName.c_str(), sInfoCaller.friendsID, sTargetName.c_str(), sInfoTarget.friendsID);
 							strcpy(pVoteOption, xorstr_("vote option1"));
 							SetVoteState(1);
 						}
 						else
 						{
-							NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Friend %s ([U:1:%u]) trying to kick party member %s ([U:1:%u])! But friend not in party, voting no."), sInfoCaller.name, sInfoCaller.friendsID, sInfoTarget.name, sInfoTarget.friendsID);
+							NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Friend %s ([U:1:%u]) trying to kick party member %s ([U:1:%u])! But friend not in party, voting no."), sCallerName.c_str(), sInfoCaller.friendsID, sTargetName.c_str(), sInfoTarget.friendsID);
 							strcpy(pVoteOption, xorstr_("vote option2"));
 							SetVoteState(2);
 						}
@@ -487,7 +559,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 					}
 					case CatState_Party:
 					{
-						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Party member %s ([U:1:%u]) trying to kick party member %s ([U:1:%u])! Voting no."), sInfoCaller.name, sInfoCaller.friendsID, sInfoTarget.name, sInfoTarget.friendsID);
+						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Party member %s ([U:1:%u]) trying to kick party member %s ([U:1:%u])! Voting no."), sCallerName.c_str(), sInfoCaller.friendsID, sTargetName.c_str(), sInfoTarget.friendsID);
 						strcpy(pVoteOption, xorstr_("vote option2"));
 						NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 						pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -498,7 +570,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 					case CatState_Cat:
 					default:
 					{
-						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) trying to kick party member %s ([U:1:%u])! Voting no."), (eCallerState == CatState_Cat ? xorstr_("CAT") : (eCallerState == CatState_FakeCat ? xorstr_("Fake CAT") : xorstr_("Player"))), sInfoCaller.name, sInfoCaller.friendsID, sInfoTarget.name, sInfoTarget.friendsID);
+						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) trying to kick party member %s ([U:1:%u])! Voting no."), sCallerPrefix.c_str(), sCallerName.c_str(), sInfoCaller.friendsID, sTargetName.c_str(), sInfoTarget.friendsID);
 						strcpy(pVoteOption, xorstr_("vote option2"));
 						NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 						pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -516,7 +588,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 				{
 					case CatState_Friend:
 					{
-						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Friend %s ([U:1:%u]) trying to kick %s %s ([U:1:%u])! Voting yes."), sInfoCaller.name, sInfoCaller.friendsID, (eTargetState == CatState_FakeCat ? xorstr_("fake CAT") : xorstr_("player")), sInfoTarget.name, sInfoTarget.friendsID);
+						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Friend %s ([U:1:%u]) trying to kick %s %s ([U:1:%u])! Voting yes."), sCallerName.c_str(), sInfoCaller.friendsID, sTargetPrefix.c_str(), sTargetName.c_str(), sInfoTarget.friendsID);
 						strcpy(pVoteOption, xorstr_("vote option1"));
 						NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 						pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -525,7 +597,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 					}
 					case CatState_Party:
 					{
-						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Party member %s ([U:1:%u]) trying to kick %s %s ([U:1:%u])! Voting yes."), sInfoCaller.name, sInfoCaller.friendsID, (eTargetState == CatState_FakeCat ? xorstr_("fake CAT") : xorstr_("player")), sInfoTarget.name, sInfoTarget.friendsID);
+						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Party member %s ([U:1:%u]) trying to kick %s %s ([U:1:%u])! Voting yes."), sCallerName.c_str(), sInfoCaller.friendsID, sTargetPrefix.c_str(), sTargetName.c_str(), sInfoTarget.friendsID);
 						strcpy(pVoteOption, xorstr_("vote option1"));
 						NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 						pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -534,7 +606,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 					}
 					case CatState_Cat:
 					{
-						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] CAT %s ([U:1:%u]) trying to kick %s %s ([U:1:%u])! Voting yes."), sInfoCaller.name, sInfoCaller.friendsID, (eTargetState == CatState_FakeCat ? xorstr_("fake CAT") : xorstr_("player")), sInfoTarget.name, sInfoTarget.friendsID);
+						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] CAT %s ([U:1:%u]) trying to kick %s %s ([U:1:%u])! Voting yes."), sCallerName.c_str(), sInfoCaller.friendsID, sTargetPrefix.c_str(), sTargetName.c_str(), sInfoTarget.friendsID);
 						strcpy(pVoteOption, xorstr_("vote option1"));
 						NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 						pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -544,7 +616,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 					case CatState_FakeCat:
 					default:
 					{
-						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) trying to kick %s %s ([U:1:%u])! Voting no."), (eCallerState == CatState_FakeCat ? xorstr_("Fake CAT") : xorstr_("Player")), sInfoCaller.name, sInfoCaller.friendsID, (eTargetState == CatState_FakeCat ? xorstr_("fake CAT") : xorstr_("player")), sInfoTarget.name, sInfoTarget.friendsID);
+						NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) trying to kick %s %s ([U:1:%u])! Voting no."), sCallerPrefix.c_str(), sCallerName.c_str(), sInfoCaller.friendsID, sTargetPrefix.c_str(), sTargetName.c_str(), sInfoTarget.friendsID);
 						strcpy(pVoteOption, xorstr_("vote option2"));
 						NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 						pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -559,7 +631,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 	else
 	{
 		ECatState eCallerState = GetClientState(iCaller);
-		NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) trying to kick me! Voting no."), sInfoCaller.name, sInfoCaller.friendsID);
+		NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s %s ([U:1:%u]) trying to kick me! Voting no."), sCallerPrefix.c_str(), sCallerName.c_str(), sInfoCaller.friendsID);
 		strcpy(pVoteOption, xorstr_("vote option2")); //vote no if we didn't vote yet
 		NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(pVoteOption, 0.5);
 		pTimer->SetCallback(&CCatConnect::OnVoteTimer);
@@ -735,6 +807,9 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 		if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(iClient, &sInfo))
 			return;
 
+		std::string sPlayerName = sInfo.name;
+		if (remove_newlines.GetBool()) RemoveUnprintable(sPlayerName);
+
 		if (iClient != NSInterfaces::g_pEngineClient->GetLocalPlayer())
 		{
 			uint8_t iIsCat = GetSavedState(sInfo.friendsID);
@@ -742,21 +817,21 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 			{
 				//send reply
 				if (!iIsCat || debug_show.GetBool()) //print message only if it's unknown cat
-					NSUtils::PrintToClientConsole(Color{ 0, 255, 0, 255 }, xorstr_("[CatConnect] Received CAT auth message from player %s ([U:1:%u])! Sending response and marking him as CAT.\n"), sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToClientConsole(Color{ 0, 255, 0, 255 }, xorstr_("[CatConnect] Received CAT auth message from player %s ([U:1:%u])! Sending response and marking him as CAT.\n"), sPlayerName.c_str(), sInfo.friendsID);
 				SendCatMessage(CAT_REPLY);
 			}
 			else if (!iIsCat || debug_show.GetBool())
-				NSUtils::PrintToClientConsole(Color{ 0, 255, 0, 255 }, xorstr_("[CatConnect] Received CAT %s message from player %s ([U:1:%u])! Marking him as CAT.\n"), (iAchv == CAT_FAKE ? xorstr_("fake") : xorstr_("reply")), sInfo.name, sInfo.friendsID);
+				NSUtils::PrintToClientConsole(Color{ 0, 255, 0, 255 }, xorstr_("[CatConnect] Received CAT %s message from player %s ([U:1:%u])! Marking him as CAT.\n"), (iAchv == CAT_FAKE ? xorstr_("fake") : xorstr_("reply")), sPlayerName.c_str(), sInfo.friendsID);
 
 			if ((!iIsCat || iIsCat == 3) && iAchv != CAT_FAKE)
 			{
 				ms_mSavedCatState[sInfo.friendsID] = 1;
 				if (notify_partychat.GetBool())
-					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) marked as CAT!"), sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) marked as CAT!"), sPlayerName.c_str(), sInfo.friendsID);
 				if (notify_saychat.GetBool())
-					NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] Player %s ([U:1:%u]) marked as CAT!"), sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] Player %s ([U:1:%u]) marked as CAT!"), sPlayerName.c_str(), sInfo.friendsID);
 				if (notify_gamechat.GetBool())
-					NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X Player %s ([U:1:%u]) marked as CAT (catbot or cathook user). Most likely it's a catbot. Don't kill him or you will pay!"), 0xE05938, 0xCD71E1, sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X Player %s ([U:1:%u]) marked as CAT (catbot or cathook user). Most likely it's a catbot. Don't kill him or you will pay!"), 0xE05938, 0xCD71E1, sPlayerName.c_str(), sInfo.friendsID);
 				SaveCats();
 				CCatFiles::SaveData();
 			}
@@ -764,11 +839,11 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 			{
 				ms_mSavedCatState[sInfo.friendsID] = 2;
 				if (notify_partychat.GetBool())
-					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) remarked as fake CAT (CatConnect user)!"), sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) remarked as fake CAT (CatConnect user)!"), sPlayerName.c_str(), sInfo.friendsID);
 				if (notify_saychat.GetBool())
-					NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] Player %s ([U:1:%u]) remarked fake CAT (CatConnect user)!"), sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] Player %s ([U:1:%u]) remarked fake CAT (CatConnect user)!"), sPlayerName.c_str(), sInfo.friendsID);
 				if (notify_gamechat.GetBool())
-					NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X Player %s ([U:1:%u]) remarked as fake CAT (CatConnect user)!"), 0xE05938, 0xCD71E1, sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X Player %s ([U:1:%u]) remarked as fake CAT (CatConnect user)!"), 0xE05938, 0xCD71E1, sPlayerName.c_str(), sInfo.friendsID);
 				SaveCats();
 				CCatFiles::SaveData();
 			}
@@ -776,11 +851,11 @@ void CCatConnect::CAchievementListener::FireGameEvent(IGameEvent * pEvent)
 			{
 				ms_mSavedCatState[sInfo.friendsID] = 2;
 				if (notify_partychat.GetBool())
-					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) marked as fake CAT (CatConnect user)!"), sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) marked as fake CAT (CatConnect user)!"), sPlayerName.c_str(), sInfo.friendsID);
 				if (notify_saychat.GetBool())
-					NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] Player %s ([U:1:%u]) marked fake CAT (CatConnect user)!"), sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] Player %s ([U:1:%u]) marked fake CAT (CatConnect user)!"), sPlayerName.c_str(), sInfo.friendsID);
 				if (notify_gamechat.GetBool())
-					NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X Player %s ([U:1:%u]) marked as fake CAT (CatConnect user)!"), 0xE05938, 0xCD71E1, sInfo.name, sInfo.friendsID);
+					NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X Player %s ([U:1:%u]) marked as fake CAT (CatConnect user)!"), 0xE05938, 0xCD71E1, sPlayerName.c_str(), sInfo.friendsID);
 				SaveCats();
 				CCatFiles::SaveData();
 			}
@@ -804,25 +879,25 @@ void CCatConnect::CPlayerListener::FireGameEvent(IGameEvent * pEvent)
 			return;
 		int iFriendID = atoi(pNetID + 5);
 		uint8_t iCat = GetSavedState(iFriendID);
+		std::string sPlayerName = pEvent->GetString(xorstr_("name"));
+		if (remove_newlines.GetBool()) RemoveUnprintable(sPlayerName);
 		if (iCat == 1)
 		{
-			const char * pName = pEvent->GetString(xorstr_("name"));
 			if (notify_partychat.GetBool())
-				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] CAT %s (%s) joined the game."), pName, pNetID);
+				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] CAT %s (%s) joined the game."), sPlayerName.c_str(), pNetID);
 			if (notify_saychat.GetBool())
-				NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] CAT %s (%s) joined the game."), pName, pNetID);
+				NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] CAT %s (%s) joined the game."), sPlayerName.c_str(), pNetID);
 			if (notify_gamechat.GetBool())
-				NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X CAT %s (%s) joined the game. Most likely it's a catbot. Don't kill him or you will pay!"), 0xE05938, 0xCD71E1, pName, pNetID);
+				NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X CAT %s (%s) joined the game. Most likely it's a catbot. Don't kill him or you will pay!"), 0xE05938, 0xCD71E1, sPlayerName.c_str(), pNetID);
 		}
 		else if (iCat == 2)
 		{
-			const char * pName = pEvent->GetString(xorstr_("name"));
 			if (notify_partychat.GetBool())
-				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Fake CAT %s (%s) joined the game."), pName, pNetID);
+				NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Fake CAT %s (%s) joined the game."), sPlayerName.c_str(), pNetID);
 			if (notify_saychat.GetBool())
-				NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] Fake CAT %s (%s) joined the game."), pName, pNetID);
+				NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] Fake CAT %s (%s) joined the game."), sPlayerName.c_str(), pNetID);
 			if (notify_gamechat.GetBool())
-				NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X Fake CAT %s (%s) joined the game."), 0xE05938, 0xCD71E1, pName, pNetID);
+				NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X Fake CAT %s (%s) joined the game."), 0xE05938, 0xCD71E1, sPlayerName.c_str(), pNetID);
 		}
 	}
 }
@@ -845,7 +920,10 @@ void CCatConnect::CVoteListener::FireGameEvent(IGameEvent * pEvent)
 		if (votekicks_showvoters.GetInt() == 2 && iVoteOption + 1 == ms_iCurrentVoteChoice)
 			return;
 
-		NSUtils::PrintToPartyChat(xorstr_("[CatConnect] Player %s ([U:1:%u]) voted %s."), sInfo.name, sInfo.friendsID, !iVoteOption ? xorstr_("yes") : xorstr_("no"));
+		std::string sPlayerName = sInfo.name;
+		if (remove_newlines.GetBool()) RemoveUnprintable(sPlayerName);
+
+		NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s ([U:1:%u]) voted %s."), sPlayerName.c_str(), sInfo.friendsID, !iVoteOption ? xorstr_("yes") : xorstr_("no"));
 	}
 }
 
@@ -899,14 +977,16 @@ void CCatConnect::NotifyCat(int iClient)
 		return;
 
 	uint8_t iCat = GetSavedState(sInfo.friendsID);
+	std::string sPlayerName = sInfo.name;
+	if (remove_newlines.GetBool()) RemoveUnprintable(sPlayerName);
 	if (iCat == 1)
 	{
 		if (notify_partychat.GetBool())
-			NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s ([U:1:%u]) is a CAT."), sInfo.name, sInfo.friendsID);
+			NSUtils::PrintToPartyChat(xorstr_("[CatConnect] %s ([U:1:%u]) is a CAT."), sPlayerName.c_str(), sInfo.friendsID);
 		if (notify_saychat.GetBool())
-			NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] %s ([U:1:%u]) is a CAT."), sInfo.name, sInfo.friendsID);
+			NSUtils::PrintToChatAll(!!(notify_saychat.GetInt() - 1), xorstr_("[CatConnect] %s ([U:1:%u]) is a CAT."), sPlayerName.c_str(), sInfo.friendsID);
 		if (notify_gamechat.GetBool())
-			NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X %s ([U:1:%u]) is a CAT. Most likely it's a catbot. Don't kill him or you will pay!"), 0xE05938, 0xCD71E1, sInfo.name, sInfo.friendsID);
+			NSUtils::PrintToClientChat(xorstr_("\x07%06X[CatConnect]\x07%06X %s ([U:1:%u]) is a CAT. Most likely it's a catbot. Don't kill him or you will pay!"), 0xE05938, 0xCD71E1, sPlayerName.c_str(), sInfo.friendsID);
 	}
 	else if (iCat == 2)
 	{
@@ -925,19 +1005,40 @@ bool CCatConnect::InSameParty(int iIndex)
 	return boost::range::find(vPartyMembers, iIndex) != vPartyMembers.end();
 }
 
-Color CCatConnect::GetStateColor(ECatState eState)
+Color CCatConnect::GetStateColor(ECatState eState, int iTeam)
 {
 	switch (eState)
 	{
 	case CatState_Cat:
-		return Color(178, 140, 255, 255);
+		switch (iTeam)
+		{
+		case 2: //red
+			return Color(255, 120, 190, 255);
+		case 3: //blue
+			return Color(178, 140, 255, 255);
+		}
+		return Color(0, 255, 0, 255);
 	case CatState_Friend:
 	case CatState_Party:
 		return Color(0, 213, 153, 255);
 	case CatState_FakeCat:
-		return Color(0, 0, 255, 255);
+		switch (iTeam)
+		{
+		case 2: //red
+			return Color(255, 0, 0, 255);
+		case 3: //blue
+			return Color(0, 0, 255, 255);
+		}
+		return Color(255, 255, 255, 255);
 	case CatState_VoteBack:
-		return Color(255, 106, 0, 255);
+		switch (iTeam)
+		{
+		case 2: //red
+			return Color(255, 106, 0, 255);
+		case 3: //blue
+			return Color(31, 112, 87, 255);
+		}
+		return Color(122, 88, 88, 255);
 	}
 
 	return Color(0, 0, 0, 0);

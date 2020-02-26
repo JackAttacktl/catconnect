@@ -58,6 +58,7 @@ void NSMenu::CMenu::CreateGUI()
 			new CGroupBox(this, xorstr_("Visual"),
 				{
 					new CCheckBox(this, xorstr_("Suppress TF2 glows"), xorstr_("catconnect.glow.suppress.stocks")),
+					//new CListBox(this, xorstr_("Render glow as"), xorstr_("catconnect.glow.howrender"), { xorstr_("Don't render"), xorstr_("Outline"), xorstr_("Outline-solid"), xorstr_("Solid-outline"), xorstr_("Solid") }),
 					new CListBox(this, xorstr_("Render glow as"), xorstr_("catconnect.glow.howrender"), { xorstr_("Don't render"), xorstr_("Outline"), xorstr_("Outline-solid"), xorstr_("Solid") }),
 					new CSlider(this, xorstr_("Glow on cats"), xorstr_("catconnect.glow.show.cats"), 0, 20, 1),
 					new CListBox(this, xorstr_("Remove unprintable"), xorstr_("catconnect.chat.removeunprintable"), { xorstr_("Don't remove"), xorstr_("Remove & process"), xorstr_("Full remove") })
