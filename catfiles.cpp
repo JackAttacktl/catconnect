@@ -20,7 +20,7 @@ struct SSectionVersions
 static const SSectionVersions gs_SectionVersions[] =
 {
 	{Section_Cats, 1},
-	{Section_Settings, 1},
+	{Section_Settings, 2},
 
 	{Sections_Max, 0}
 };

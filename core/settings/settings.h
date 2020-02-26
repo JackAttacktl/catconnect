@@ -9,7 +9,7 @@
 namespace NSCore
 {
 #define SETTING_MAX_NAME_LEN 128
-#define SETTING_MAX_VALUE_LEN 256
+#define SETTING_MAX_VALUE_LEN 32
 
 	class CSetting;
 

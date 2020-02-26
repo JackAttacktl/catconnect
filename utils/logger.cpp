@@ -94,7 +94,7 @@ void NSUtils::CLogger::LogActual(const char * pLine, FILE * pFile, Color cClr)
 	}
 
 	if (cClr.a())
-		NSUtils::PrintToClientConsole(cClr, xorstr_("[CatConnect] %s"), pLine);
+		NSUtils::PrintToClientConsole(cClr, xorstr_(MSG_PREFIX "%s"), pLine);
 }
 
 std::recursive_mutex NSUtils::CLogger::ms_LogMutex;

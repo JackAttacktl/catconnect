@@ -10,11 +10,11 @@
 
 #pragma warning (disable : 4996)
 
-NSCore::CCatCommandSafe settingset(xorstr_("ccatsettingset"), [](const CCommand & rCmd)
+NSCore::CCatCommandSafe settingset(xorstr_("ccat_set"), [](const CCommand & rCmd)
 {
 	if (rCmd.ArgC() < 3)
 	{
-		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("[CatConnect] Usage: ccatsettingset <setting> <value>"));
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "Usage: ccatsettingset <setting> <value>"));
 		return true;
 	}
 
@@ -25,21 +25,21 @@ NSCore::CCatCommandSafe settingset(xorstr_("ccatsettingset"), [](const CCommand 
 
 	if (!pSett)
 	{
-		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("[CatConnect] No setting with name \"%s\" found!"), pSetting);
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "No setting with name \"%s\" found!"), pSetting);
 		return true;
 	}
 
 	pSett->SetValue(pValue);
 
-	NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("[CatConnect] Value of setting \"%s\" set to \"%s\"!"), pSetting, pValue);
+	NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_(MSG_PREFIX "Value of setting \"%s\" set to \"%s\"!"), pSetting, pValue);
 	return true;
 });
 
-NSCore::CCatCommandSafe settingget(xorstr_("ccatsettingget"), [](const CCommand& rCmd)
+NSCore::CCatCommandSafe settingget(xorstr_("ccat_get"), [](const CCommand& rCmd)
 {
 	if (rCmd.ArgC() < 2)
 	{
-		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("[CatConnect] Usage: ccatsettingget <setting>"));
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "Usage: ccatsettingget <setting>"));
 		return true;
 	}
 
@@ -49,23 +49,23 @@ NSCore::CCatCommandSafe settingget(xorstr_("ccatsettingget"), [](const CCommand&
 
 	if (!pSett)
 	{
-		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("[CatConnect] No setting with name \"%s\" found!"), pSetting);
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "No setting with name \"%s\" found!"), pSetting);
 		return true;
 	}
 
 	const char * pValue = pSett->GetString();
 
-	NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("[CatConnect] Value of setting \"%s\" = \"%s\"."), pSetting, pValue);
+	NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_(MSG_PREFIX "Value of setting \"%s\" = \"%s\"."), pSetting, pValue);
 	return true;
 });
 
-NSCore::CCatCommandSafe settingslist(xorstr_("ccatsettingslist"), [](const CCommand& rCmd)
+NSCore::CCatCommandSafe settingslist(xorstr_("ccat_list"), [](const CCommand& rCmd)
 {
 	unsigned int iCountOfSettings = NSCore::CSettingsCollector::GetCountOfSettings();
 
 	bool bSettingFound = false;
 
-	NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("[CatConnect] List of settings:"));
+	NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_(MSG_PREFIX "List of settings:"));
 
 	for (unsigned int iSetting = 0; iSetting < iCountOfSettings; iSetting++)
 	{

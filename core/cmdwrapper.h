@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <stdint.h>
 #include "tier1/convar.h"
 #include "catconnect.h"
 
@@ -15,6 +16,24 @@ namespace NSCore
 
 	class CCmdWrapper
 	{
+	public:
+		static inline uint32_t GetCommandsCount() { return (uint32_t)GetCmdsMap().size(); }
+		static inline std::string GetCommandNameByNumber(uint32_t iCmd)
+		{
+			auto iIter = GetIterByNumber(iCmd);
+			if (iIter != GetCmdsMap().end())
+				return iIter->first;
+			return "";
+		}
+
+		static inline CmdCallbackFn GetCommandCallbackByNumber(uint32_t iCmd)
+		{
+			auto iIter = GetIterByNumber(iCmd);
+			if (iIter != GetCmdsMap().end())
+				return iIter->second;
+			return nullptr;
+		}
+
 	private:
 		friend bool CCatConnect::OnClientCommand(const char * pCmdLine);
 		friend class CCatCommandSafe;
@@ -31,6 +50,15 @@ namespace NSCore
 		{
 			static std::map<std::string, CmdCallbackFn> s_mMap;
 			return s_mMap;
+		}
+
+		static inline std::map<std::string, CmdCallbackFn>::iterator GetIterByNumber(uint32_t iCmd)
+		{
+			auto& mMap = GetCmdsMap();
+			if (iCmd >= mMap.size()) return mMap.end();
+			auto iIter = mMap.begin();
+			for (uint32_t iNum = 0; iNum != iCmd; iNum++) iIter++;
+			return iIter;
 		}
 	};
 
