@@ -358,20 +358,7 @@ void NSCore::CGlowEffect::DrawEntity(IClientNetworkable * pEnt)
     while (s_pAttach && s_iPasses++ < 32)
     {
         if (s_pAttach->ShouldDraw())
-        {
-            if (((NSReclass::CBaseCombatWeapon *)s_pAttach)->IsBaseCombatWeapon())
-            {
-                float flTemp[4], flWhite[4] = { 255.0, 255.0, 255.0, 255.0 };
-                NSInterfaces::g_pRenderView->GetColorModulation(flTemp);
-                NSInterfaces::g_pRenderView->SetColorModulation(flWhite);
-                s_pAttach->DrawModel(1);
-                NSInterfaces::g_pRenderView->SetColorModulation(flTemp);
-            }
-            else
-            {
-                s_pAttach->DrawModel(1);
-            }
-        }
+            s_pAttach->DrawModel(1);
         s_pAttach = NSInterfaces::g_pClientEntityList->GetClientEntity(*(int *)((char *)s_pAttach + s_iCollisionOffset - 20) & 0xFFF);
     }
 }

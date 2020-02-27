@@ -100,9 +100,11 @@ namespace NSReclass
             return BCanQueueForStandbyFn(this);
         }
 
-        FORCEINLINE bool BCanQueueForMatch(EQueueType iType)
+        FORCEINLINE bool BCanQueueForMatch(EQueueType iType) { char cDummy[1]; return BCanQueueForMatch(iType, cDummy); }
+
+        template<int iMaxLen> FORCEINLINE bool BCanQueueForMatch(EQueueType iType, char (&pReasonBuffer)[iMaxLen])
         {
-            CUtlVector<wchar_t[4096]> rEligibilityData; //this vector contains reasons why we can't queue. tbh we don't care
+            CUtlVector<wchar_t[4096]> rEligibilityData; //this vector contains reasons why we can't queue
             typedef bool (__thiscall * BCanQueueForMatch_t)(CTFPartyClient *, EQueueType, CUtlVector<wchar_t[4096]> &);
             static BCanQueueForMatch_t BCanQueueForMatchFn = nullptr;
             if (!BCanQueueForMatchFn)
@@ -110,7 +112,10 @@ namespace NSReclass
                 void * pAddr = (void *)NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x55\x8B\xEC\x81\xEC\x38\x08\x00\x00\x8B\x45\x0C"), 12);
                 BCanQueueForMatchFn = BCanQueueForMatch_t(pAddr);
             }
-            return BCanQueueForMatchFn(this, iType, rEligibilityData);
+            bool bResult = BCanQueueForMatchFn(this, iType, rEligibilityData);
+            if (pReasonBuffer && !bResult && rEligibilityData.Count())
+                wcstombs(pReasonBuffer, rEligibilityData[0], iMaxLen);
+            return bResult;
         }
 
         FORCEINLINE ITFGroupMatchCriteria * MutLocalGroupCriteria()
@@ -292,7 +297,7 @@ namespace NSReclass
         }
     };
 
-    FORCEINLINE ITFMatchGroupDescription * GetMatchGroupDescription(int& iIDX)
+    FORCEINLINE static ITFMatchGroupDescription * GetMatchGroupDescription(int& iIDX)
     {
         typedef ITFMatchGroupDescription * (__cdecl * GetMatchGroupDescription_t)(int&);
         static GetMatchGroupDescription_t GetMatchGroupDescriptionFn = nullptr;
@@ -303,6 +308,71 @@ namespace NSReclass
         }
         return GetMatchGroupDescriptionFn(iIDX);
     }
+
+    class ITFGroupMatchCriteria
+    {
+    public:
+        FORCEINLINE bool SetCasualMapSelected(uint32_t iMapID, bool bSelected)
+        {
+            static void * s_pFuncAddress = nullptr;
+            if (!s_pFuncAddress)
+                s_pFuncAddress = (void *)(NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x55\x8B\xEC\x83\xEC\x2C\x56\x8B\xF1\x8B\x06\xFF\x50\x04"
+                                                                                          "\x8B\x40\x3C\x85\xC0\x75\x2A\xA1\x2A\x2A\x2A\x2A\x8B\x40"
+                                                                                          "\x3C\x50\x8D\x4D\xF0\xE8\x2A\x2A\x2A\x2A\xFF\x75\x08"), 41));
+            return ((bool (__thiscall *)(ITFGroupMatchCriteria * pThis, uint32_t iMapIndex, bool bSelect))s_pFuncAddress)(this, iMapID, bSelected);
+        }
+    };
+
+    class CCasualCriteriaWrapper
+    {
+    public:
+        FORCEINLINE static bool SetMapSelected(const char * pMapName, bool bSelected)
+        {
+            CTFItemSchema * pSchema = CTFItemSchema::GetItemSchema();
+            CMasterMapDefWrapper * pWrapper = pSchema->GetMasterMapDefByName(pMapName);
+            if (!pWrapper) return false;
+            uint32_t iIndex = pWrapper->GetMapIndex();
+            CTFPartyClient * pPartyClient = CTFPartyClient::GTFPartyClient();
+            ITFGroupMatchCriteria * pLocalGroupCriteria = pPartyClient->MutLocalGroupCriteria();
+            return pLocalGroupCriteria->SetCasualMapSelected(iIndex, bSelected);
+        }
+
+    private:
+        class CMasterMapDefWrapper
+        {
+        public:
+            FORCEINLINE const char * GetMapName() { return **(char ***)((char *)this + 16); }
+            FORCEINLINE uint32_t GetMapIndex() { return *(uint32_t *)((char *)this + 12); }
+        };
+
+        class CTFItemSchema
+        {
+        public:
+            FORCEINLINE static CTFItemSchema * GetItemSchema()
+            {
+                static void * s_pFuncAddress = nullptr;
+			    if (!s_pFuncAddress)
+                    s_pFuncAddress = (void *)(NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\xE8\x2A\x2A\x2A\x2A\x83\xC0\x04\xC3"), 9));
+                return ((CTFItemSchema * (__cdecl *)())s_pFuncAddress)();
+            }
+
+            FORCEINLINE CMasterMapDefWrapper * GetMasterMapDefByName(const char * pMapName)
+            {
+                static void * s_pFuncAddress = nullptr;
+                if (!s_pFuncAddress)
+                    s_pFuncAddress = (void *)(NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x55\x8B\xEC\x53\x56\x57\x8B\xF9\x33\xF6\x39\xB7\x7C\x06\x00\x00"), 16));
+                return ((CMasterMapDefWrapper * (__thiscall *)(CTFItemSchema * pThis, const char * pName))s_pFuncAddress)(this, pMapName);
+            }
+
+            FORCEINLINE CMasterMapDefWrapper * GetMasterMapDefByIndex(uint32_t iMapIndex)
+            {
+                static void * s_pFuncAddress = nullptr;
+                if (!s_pFuncAddress)
+                    s_pFuncAddress = (void *)(NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x55\x8B\xEC\x53\x56\x8B\xB1\x7C\x06\x00\x00"), 11));
+                return ((CMasterMapDefWrapper * (__thiscall*)(CTFItemSchema * pThis, uint32_t iIndex))s_pFuncAddress)(this, iMapIndex);
+            }
+        };
+    };
 }
 
 #endif

@@ -119,6 +119,9 @@
     <ClCompile Include="public\segvcatch\lib\segvcatch.cpp">
       <Filter>Source\sdk</Filter>
     </ClCompile>
+    <ClCompile Include="public\steamfixes.cpp">
+      <Filter>Source\sdk</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="public\globalvars_base.h">

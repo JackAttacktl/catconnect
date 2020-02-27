@@ -12,7 +12,7 @@ class CBasePlayer;
 #pragma warning (disable : 4530) //exceptions disabled
 #endif
 
-#define MSG_PREFIX "[CatConnect] "
+#define MSG_PREFIX "[CC] "
 
 #ifdef _MSC_VER
 #define FORCEINLINE __forceinline

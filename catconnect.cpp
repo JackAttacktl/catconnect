@@ -1036,7 +1036,7 @@ Color CCatConnect::GetStateColor(ECatState eState, int iTeam)
 		case 2: //red
 			return Color(255, 106, 0, 255);
 		case 3: //blue
-			return Color(0, 109, 74, 255);
+			return Color(66, 39, 101, 255);
 		}
 		return Color(122, 88, 88, 255);
 	}
@@ -1106,6 +1106,61 @@ NSCore::CCatCommandSafe getcommandslist(xorstr_("ccat_cmdlist"), CCMD_FLAG_NONE,
 		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Command \"%s\" - \"%s\"."), pCmd->GetMyName(), pCmd->GetMyDescription());
 	}
 
+	return true;
+});
+
+NSCore::CCatCommandSafe ccat_party_debug(xorstr_("ccat_party_debug"), CCMD_FLAG_HIDDEN, [](const CCommand& rCmd)
+{
+	auto * pPartyClient = NSReclass::CTFPartyClient::GTFPartyClient();
+	CSteamID sSteamID;
+	NSUtils::PrintToClientConsole(Color(0, 0, 255, 255), xorstr_(MSG_PREFIX "Party debug info:"));
+	if (pPartyClient->GetCurrentPartyLeader(sSteamID))
+		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Current party leader: %s"), sSteamID.Render());
+	else
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("Unable to get party leader! Most likely you aren't in party."));
+	if (pPartyClient->BInQueueForMatchGroup(QueueType_Casual_12v12))
+		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Now in queue for casual"));
+	else
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("Now not in queue for casual"));
+	if (pPartyClient->BInQueueForMatchGroup(QueueType_Competitive_6v6))
+		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Now in queue for competitive"));
+	else
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("Now not in queue for competitive"));
+	if (pPartyClient->BInStandbyQueue())
+		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Now in queue for standby"));
+	else
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("Now not in queue for standby"));
+	char cReason[4096];
+	if (pPartyClient->BCanQueueForMatch(QueueType_Casual_12v12, cReason))
+		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Can queue for casual"));
+	else
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("Can not queue for casual: \"%s\""), cReason);
+	if (pPartyClient->BCanQueueForMatch(QueueType_Competitive_6v6, cReason))
+		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Can queue for competitive"));
+	else
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("Can not queue for competitive: \"%s\""), cReason);
+	if (pPartyClient->BCanQueueForStandby())
+		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Can queue for standby"));
+	else
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_("Can not queue for standby"));
+	return true;
+});
+
+NSCore::CCatCommandSafe ccat_party_debug_setmap(xorstr_("ccat_party_debug_setmap"), CCMD_FLAG_HIDDEN, [](const CCommand& rCmd)
+{
+	if (rCmd.ArgC() <= 2)
+	{
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "ccat_party_debug_setmap <mapname> <set>"));
+		return true;
+	}
+
+	const char * pMap = rCmd.Arg(1);
+	bool bSelected = !!atoi(rCmd.Arg(2));
+
+	if (NSReclass::CCasualCriteriaWrapper::SetMapSelected(pMap, bSelected))
+		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_(MSG_PREFIX "Map selection %s set to %i"), pMap, bSelected);
+	else
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "Map selection %s cannot be set to %i. Map doesn't exists in criteria vector."), pMap, bSelected);
 	return true;
 });
 
