@@ -17,6 +17,7 @@ class CUserMessages;
 class IViewPort;
 class ISteamClient;
 class ISteamFriends;
+class ISteamUser;
 class IInputSystem;
 namespace SurfaceV30 { class ISurfaceFixed; }
 class IMaterialSystemFixed;
@@ -41,6 +42,7 @@ namespace NSInterfaces
 	extern IViewPort * g_pViewPortInterface;
 	extern ISteamClient * g_pSteamClient;
 	extern ISteamFriends * g_pSteamFriends;
+	extern ISteamUser * g_pSteamUser;
 	extern SurfaceV30::ISurfaceFixed * g_pSurface;
 	extern IMaterialSystemFixed * g_pMaterialSystemFixed;
 	extern IVRenderView * g_pRenderView;

@@ -102,7 +102,7 @@ namespace NSReclass
 
         FORCEINLINE bool BCanQueueForMatch(EQueueType iType) { char cDummy[1]; return BCanQueueForMatch(iType, cDummy); }
 
-        template<int iMaxLen> FORCEINLINE bool BCanQueueForMatch(EQueueType iType, char (&pReasonBuffer)[iMaxLen])
+        template<size_t iMaxLen> FORCEINLINE bool BCanQueueForMatch(EQueueType iType, char (&pReasonBuffer)[iMaxLen])
         {
             CUtlVector<wchar_t[4096]> rEligibilityData; //this vector contains reasons why we can't queue
             typedef bool (__thiscall * BCanQueueForMatch_t)(CTFPartyClient *, EQueueType, CUtlVector<wchar_t[4096]> &);
@@ -297,7 +297,7 @@ namespace NSReclass
         }
     };
 
-    FORCEINLINE static ITFMatchGroupDescription * GetMatchGroupDescription(int& iIDX)
+    FORCEINLINE ITFMatchGroupDescription * GetMatchGroupDescription(int& iIDX)
     {
         typedef ITFMatchGroupDescription * (__cdecl * GetMatchGroupDescription_t)(int&);
         static GetMatchGroupDescription_t GetMatchGroupDescriptionFn = nullptr;
@@ -341,7 +341,7 @@ namespace NSReclass
         class CMasterMapDefWrapper
         {
         public:
-            FORCEINLINE const char * GetMapName() { return **(char ***)((char *)this + 16); }
+            FORCEINLINE const char * GetMapName() { return **(char ***)((char *)this + 16); } //not tested yet! if it crashes or smth, then simply replace **(char ***) to *(char **)
             FORCEINLINE uint32_t GetMapIndex() { return *(uint32_t *)((char *)this + 12); }
         };
 
@@ -351,7 +351,7 @@ namespace NSReclass
             FORCEINLINE static CTFItemSchema * GetItemSchema()
             {
                 static void * s_pFuncAddress = nullptr;
-			    if (!s_pFuncAddress)
+                if (!s_pFuncAddress)
                     s_pFuncAddress = (void *)(NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\xE8\x2A\x2A\x2A\x2A\x83\xC0\x04\xC3"), 9));
                 return ((CTFItemSchema * (__cdecl *)())s_pFuncAddress)();
             }

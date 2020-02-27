@@ -9,6 +9,7 @@
 #include "cbaseentity.h"
 #include "globals.h"
 #include "isteamfriends.h"
+#include "isteamuser.h"
 #include "menu/menu.h"
 #include "visual/drawer.h"
 #include "visual/glow.h"
@@ -50,10 +51,13 @@ NSCore::CSetting notify_gamechat(xorstr_("catconnect.gamechat.notify.bots"), xor
 NSCore::CSetting notify_saychat(xorstr_("catconnect.chat.notify.bots"), xorstr_("0"));
 NSCore::CSetting votekicks_manage(xorstr_("catconnect.votekicks.manage"), xorstr_("1"));
 NSCore::CSetting votekicks_showvoters(xorstr_("catconnect.votekicks.partychat.notifyvoters"), xorstr_("2"));
+NSCore::CSetting votekicks_autoleave(xorstr_("catconnect.votekicks.autoleave"), xorstr_("0"));
+NSCore::CSetting votekicks_autoleave_minvotes(xorstr_("catconnect.votekicks.autoleave.min"), xorstr_("4"));
 NSCore::CSetting scoreboard_showcats(xorstr_("catconnect.scoreboard.showcats"), xorstr_("1"));
 NSCore::CSetting scoreboard_showfriends(xorstr_("catconnect.scoreboard.showfriends"), xorstr_("1"));
 NSCore::CSetting deathnotice_changecolors(xorstr_("catconnect.deathnotice.changecolors"), xorstr_("1"));
 NSCore::CSetting glow_suppresstfglow(xorstr_("catconnect.glow.suppress.stocks"), xorstr_("1"));
+NSCore::CSetting partyclient_autostanby(xorstr_("catconnect.partyclient.autostandby"), xorstr_("0"));
 NSCore::CSetting debug_show(xorstr_("catconnect.showdebug"), xorstr_("0"));
 extern NSCore::CSetting remove_newlines;
 
@@ -70,6 +74,7 @@ void CCatConnect::Init()
 	NSInterfaces::g_pGameEventsMan2->AddListener(&ms_GameEventAchievementListener, xorstr_("achievement_earned"), false);
 	NSInterfaces::g_pGameEventsMan2->AddListener(&ms_GameEventPlayerListener, xorstr_("player_connect_client"), false);
 	NSInterfaces::g_pGameEventsMan2->AddListener(&ms_GameEventVoteCastListener, xorstr_("vote_cast"), false);
+	NSInterfaces::g_pGameEventsMan2->AddListener(&ms_GameEventVoteCastListener, xorstr_("vote_changed"), false);
 
 	//load saved data
 	LoadSavedCats();
@@ -87,7 +92,7 @@ void CCatConnect::Init()
 	NSGlobals::g_mMyInterfaces[xorstr_(CATCONNECT_IFACE_VERSION)] = g_pCatConnectIface;
 
 	//print message about successful injection
-	NSUtils::PrintToClientConsole(Color{ 0, 255, 0, 255 }, xorstr_(MSG_PREFIX "Successfuly injected!\n"));
+	NSUtils::PrintToClientConsole(Color{ 0, 255, 0, 255 }, xorstr_(MSG_PREFIX "Successfuly injected! Press HOME to open menu.\n"));
 
 	//and don't forget about timer!
 	ms_pCheckTimer = g_CTimerMan.CreateTimer(nullptr, 120.0);
@@ -98,6 +103,10 @@ void CCatConnect::Init()
 	ms_pVotingBackTimer = g_CTimerMan.CreateTimer(nullptr, 2.0);
 	ms_pVotingBackTimer->SetCallback(NSUtils::TimerCallbackFn(&CCatConnect::OnBackVoteTimer));
 	ms_pVotingBackTimer->SetFlags(TIMER_REPEAT);
+
+	NSUtils::ITimer * pTimer = g_CTimerMan.CreateTimer(nullptr, 1.0);
+	pTimer->SetCallback(NSUtils::TimerCallbackFn(&CCatConnect::OnQueueCheck));
+	pTimer->SetFlags(TIMER_REPEAT);
 
 	ConVar * pVar = NSInterfaces::g_pCVar->FindVar(xorstr_("cl_vote_ui_active_after_voting"));
 	pVar->SetValue(1); //keep it active after voting
@@ -406,6 +415,8 @@ void CCatConnect::CreateMove(float flInputSample, CUserCmd * pCmd)
 
 void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget, const char * pReason)
 {
+	ms_bVoteStartedAgainstMe = false;
+
 	if (!votekicks_manage.GetBool())
 		return;
 
@@ -431,7 +442,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 			sToRet = xorstr_("friend");
 			break;
 		case CatState_Party:
-			sToRet = xorstr_("party");
+			sToRet = xorstr_("party member");
 			break;
 		case CatState_Cat:
 			sToRet = xorstr_("CAT");
@@ -637,6 +648,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 		pTimer->SetCallback(&CCatConnect::OnVoteTimer);
 		SetVoteState(2);
 		if (ShouldMarkAsVoteBack(eCallerState)) MarkAsToVoteBack(sInfoCaller.friendsID);
+		ms_bVoteStartedAgainstMe = true;
 	}
 
 	if (!*pVoteOption)
@@ -770,6 +782,33 @@ bool CCatConnect::OnBackVoteTimer(NSUtils::ITimer * pTimer, void * pData)
 	sprintf(cKickCmd, xorstr_("callvote Kick \"%i cheating\""), iToKick);
 	NSInterfaces::g_pEngineClient->ClientCmd_Unrestricted(cKickCmd);
 	memset(cKickCmd, 0, strlen(cKickCmd));
+
+	return true;
+}
+
+bool CCatConnect::OnQueueCheck(NSUtils::ITimer * pTimer, void * pData)
+{
+	if (!partyclient_autostanby.GetBool())
+		return true;
+
+	auto * pClientSystem = NSReclass::CTFGCClientSystem::GTFGCClientSystem();
+	auto * pPartyClient = NSReclass::CTFPartyClient::GTFPartyClient();
+
+	if (!pClientSystem->BHaveLiveMatch())
+	{
+		if (pPartyClient->BInStandbyQueue())
+			return true;
+		if (!pPartyClient->BCanQueueForStandby())
+			return true; //we can't queue for standby for some reason
+		CSteamID sPartyLeaderID;
+		if (!pPartyClient->GetCurrentPartyLeader(sPartyLeaderID))
+			return true;
+		CSteamID sMyID = NSInterfaces::g_pSteamUser->GetSteamID();
+		if (sMyID.GetAccountID() == sPartyLeaderID.GetAccountID())
+			return true; //we can't queue for standby
+		pPartyClient->RequestQueueForStandby();
+		NSUtils::PrintToClientConsole(Color{ 0, 255, 0, 255 }, xorstr_(MSG_PREFIX "Starting standby queue to join match."));
+	}
 
 	return true;
 }
@@ -924,6 +963,100 @@ void CCatConnect::CVoteListener::FireGameEvent(IGameEvent * pEvent)
 		if (remove_newlines.GetBool()) RemoveUnprintable(sPlayerName);
 
 		NSUtils::PrintToPartyChat(xorstr_(MSG_PREFIX "%s ([U:1:%u]) voted %s."), sPlayerName.c_str(), sInfo.friendsID, !iVoteOption ? xorstr_("yes") : xorstr_("no"));
+	}
+	else if (!strcmp(pEvent->GetName(), xorstr_("vote_changed")))
+	{
+		if (!votekicks_autoleave.GetBool() || !ms_bVoteStartedAgainstMe)
+			return;
+
+		if (!NSInterfaces::g_pEngineClient->IsInGame() || NSInterfaces::g_pEngineClient->IsPlayingDemo())
+			return;
+
+		int iYesCount = pEvent->GetInt(xorstr_("vote_option1"));
+		int iNoCount = pEvent->GetInt(xorstr_("vote_option2"));
+		if (votekicks_autoleave_minvotes.GetInt() > iYesCount + iNoCount)
+			return;
+
+		auto * pClientSystem = NSReclass::CTFGCClientSystem::GTFGCClientSystem();
+		auto * pPartyClient = NSReclass::CTFPartyClient::GTFPartyClient();
+
+		switch (votekicks_autoleave.GetInt())
+		{
+			case 1: //leave always
+				if (pClientSystem->BConnectedToMatchServer())
+				{
+					pClientSystem->AbandonCurrentMatch();
+					NSUtils::PrintToPartyChat(xorstr_(MSG_PREFIX "Leaving current match due to current votekick votes: %i/%i"), iYesCount, iNoCount);
+				}
+				break;
+			case 2: //leave only if in party
+				if (pClientSystem->BConnectedToMatchServer() && pPartyClient->GetNumPartyMembers() > 1)
+				{
+					pClientSystem->AbandonCurrentMatch();
+					NSUtils::PrintToPartyChat(xorstr_(MSG_PREFIX "Leaving current match due to current votekick votes: %i/%i"), iYesCount, iNoCount);
+				}
+				break;
+			case 3: //leave only if in party and not a party leader
+			{
+				if (pClientSystem->BConnectedToMatchServer() && pPartyClient->GetNumPartyMembers() > 1)
+				{
+					CSteamID sPartyLeaderID;
+					if (!pPartyClient->GetCurrentPartyLeader(sPartyLeaderID))
+						break;
+					uint32_t iPartyLeaderID = sPartyLeaderID.GetAccountID();
+					player_info_t sInfo;
+					if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(NSInterfaces::g_pEngineClient->GetLocalPlayer(), &sInfo))
+						break;
+					if (sInfo.friendsID == iPartyLeaderID)
+						break; //localplayer is party leader
+					pClientSystem->AbandonCurrentMatch();
+					NSUtils::PrintToPartyChat(xorstr_(MSG_PREFIX "Leaving current match due to current votekick votes: %i/%i"), iYesCount, iNoCount);
+				}
+				break;
+			}
+			case 4: //leave only if in party and not a party leader and party leader still in-game
+			{
+				if (pClientSystem->BConnectedToMatchServer() && pPartyClient->GetNumPartyMembers() > 1)
+				{
+					CSteamID sPartyLeaderID;
+					if (!pPartyClient->GetCurrentPartyLeader(sPartyLeaderID))
+						break;
+
+					uint32_t iPartyLeaderID = sPartyLeaderID.GetAccountID();
+
+					player_info_t sInfo;
+					if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(NSInterfaces::g_pEngineClient->GetLocalPlayer(), &sInfo))
+						break;
+
+					if (sInfo.friendsID == iPartyLeaderID)
+						break; //localplayer is party leader
+
+					//look up for party leader now
+					bool bFound = false;
+					for (int iClient = 1; iClient <= NSInterfaces::g_pEngineClient->GetMaxClients(); iClient++)
+					{
+						if (iClient == NSInterfaces::g_pEngineClient->GetLocalPlayer())
+							continue;
+
+						if (!NSInterfaces::g_pEngineClient->GetPlayerInfo(iClient, &sInfo))
+							continue;
+
+						if (sInfo.friendsID == iPartyLeaderID)
+						{
+							bFound = true;
+							break;
+						}
+					}
+
+					if (!bFound)
+						break; //party leader not in-game
+
+					pClientSystem->AbandonCurrentMatch();
+					NSUtils::PrintToPartyChat(xorstr_(MSG_PREFIX "Leaving current match due to current votekick votes: %i/%i"), iYesCount, iNoCount);
+				}
+				break;
+			}
+		}
 	}
 }
 
@@ -1168,3 +1301,4 @@ unsigned int CCatConnect::ms_iCurrentVoteChoice = 0;
 NSUtils::ITimer * CCatConnect::ms_pVotingBackTimer = nullptr;
 bool CCatConnect::ms_bIsVotingBack = false;
 bool CCatConnect::ms_bIsDrawingPostScreenSpaceEffects = false;
+bool CCatConnect::ms_bVoteStartedAgainstMe = false;

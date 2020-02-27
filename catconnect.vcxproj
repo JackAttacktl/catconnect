@@ -76,7 +76,7 @@
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>$(OutDir)$(TargetName).map</MapFileName>
       <AssemblyDebug>true</AssemblyDebug>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;mathlib.lib;tier0.lib;tier1_recompiled.lib;vstdlib.lib;legacy_stdio_definitions.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;mathlib.lib;tier0.lib;tier1_recompiled.lib;vstdlib.lib;legacy_stdio_definitions.lib;Dbghelp.lib;steam_api.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
@@ -119,7 +119,7 @@
       <EnableUAC>false</EnableUAC>
       <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
       <AssemblyDebug>false</AssemblyDebug>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;mathlib.lib;tier0.lib;tier1_recompiled.lib;vstdlib.lib;legacy_stdio_definitions.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;mathlib.lib;tier0.lib;tier1_recompiled.lib;vstdlib.lib;legacy_stdio_definitions.lib;Dbghelp.lib;steam_api.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <SupportNobindOfDelayLoadedDLL>false</SupportNobindOfDelayLoadedDLL>
@@ -179,17 +179,26 @@
     <ClInclude Include="public\isurfacefixed.h" />
     <ClInclude Include="public\steam\isteamapplist.h" />
     <ClInclude Include="public\steam\isteamapps.h" />
+    <ClInclude Include="public\steam\isteamappticket.h" />
     <ClInclude Include="public\steam\isteamclient.h" />
     <ClInclude Include="public\steam\isteamcontroller.h" />
     <ClInclude Include="public\steam\isteamfriends.h" />
+    <ClInclude Include="public\steam\isteamgamecoordinator.h" />
     <ClInclude Include="public\steam\isteamgameserver.h" />
     <ClInclude Include="public\steam\isteamgameserverstats.h" />
     <ClInclude Include="public\steam\isteamhtmlsurface.h" />
     <ClInclude Include="public\steam\isteamhttp.h" />
+    <ClInclude Include="public\steam\isteaminput.h" />
+    <ClInclude Include="public\steam\isteaminventory.h" />
     <ClInclude Include="public\steam\isteammatchmaking.h" />
     <ClInclude Include="public\steam\isteammusic.h" />
     <ClInclude Include="public\steam\isteammusicremote.h" />
     <ClInclude Include="public\steam\isteamnetworking.h" />
+    <ClInclude Include="public\steam\isteamnetworkingsockets.h" />
+    <ClInclude Include="public\steam\isteamnetworkingutils.h" />
+    <ClInclude Include="public\steam\isteamparentalsettings.h" />
+    <ClInclude Include="public\steam\isteamps3overlayrenderer.h" />
+    <ClInclude Include="public\steam\isteamremoteplay.h" />
     <ClInclude Include="public\steam\isteamremotestorage.h" />
     <ClInclude Include="public\steam\isteamscreenshots.h" />
     <ClInclude Include="public\steam\isteamugc.h" />
@@ -197,13 +206,21 @@
     <ClInclude Include="public\steam\isteamuser.h" />
     <ClInclude Include="public\steam\isteamuserstats.h" />
     <ClInclude Include="public\steam\isteamutils.h" />
+    <ClInclude Include="public\steam\isteamvideo.h" />
     <ClInclude Include="public\steam\matchmakingtypes.h" />
     <ClInclude Include="public\steam\steamclientpublic.h" />
     <ClInclude Include="public\steam\SteamCommon.h" />
+    <ClInclude Include="public\steam\steamdatagram_tickets.h" />
+    <ClInclude Include="public\steam\steamencryptedappticket.h" />
     <ClInclude Include="public\steam\steamhttpenums.h" />
+    <ClInclude Include="public\steam\steamnetworkingtypes.h" />
+    <ClInclude Include="public\steam\steamps3params.h" />
     <ClInclude Include="public\steam\steamtypes.h" />
     <ClInclude Include="public\steam\steamuniverse.h" />
     <ClInclude Include="public\steam\steam_api.h" />
+    <ClInclude Include="public\steam\steam_api_common.h" />
+    <ClInclude Include="public\steam\steam_api_flat.h" />
+    <ClInclude Include="public\steam\steam_api_internal.h" />
     <ClInclude Include="public\steam\steam_gameserver.h" />
     <ClInclude Include="public\steam\userid.h" />
     <ClInclude Include="utils\autolock.h" />

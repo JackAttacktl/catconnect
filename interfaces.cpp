@@ -5,6 +5,7 @@
 #include "ctfplayerresource.h"
 #include "isteamclient.h"
 #include "isteamfriends.h"
+#include "isteamuser.h"
 #include "public/imaterialsystemfixed.h"
 #include "materialsystem/imaterialsystem.h"
 #include "igameevents.h"
@@ -33,8 +34,6 @@ class CScreenSpaceEffectRegistration;
 
 extern IScreenSpaceEffectManager * g_pScreenSpaceEffects;
 extern CScreenSpaceEffectRegistration ** g_ppScreenSpaceRegistrationHead;
-
-typedef void * (* SteamCreateInterfaceFn)(const char * pName);
 
 #pragma comment (lib, "Kernel32.lib")
 
@@ -131,13 +130,13 @@ void NSInterfaces::InitInterfaces()
 	CreateInterfaceFn pInputSysFactory = nullptr;
 	CreateInterfaceFn pMatSystemFactory = nullptr;
 	CreateInterfaceFn pFileSystemFactory = nullptr;
-	//SteamCreateInterfaceFn pSteamAPIFactory = nullptr;
 	{
 		WaitForModule(xorstr_("client.dll"));
 		WaitForModule(xorstr_("engine.dll"));
 		WaitForModule(xorstr_("vgui2.dll"));
 		WaitForModule(xorstr_("vstdlib.dll"));
 		WaitForModule(xorstr_("steam_api.dll"));
+		WaitForModule(xorstr_("steamclient.dll"));
 		WaitForModule(xorstr_("vguimatsurface.dll"));
 		WaitForModule(xorstr_("inputsystem.dll"));
 		WaitForModule(xorstr_("FileSystem_Stdio.dll"));
@@ -154,7 +153,6 @@ void NSInterfaces::InitInterfaces()
 		pInputSysFactory = (CreateInterfaceFn)(WaitForExternal(xorstr_("inputsystem.dll"), sCrIface.crypt_get()));
 		pMatSystemFactory = (CreateInterfaceFn)(WaitForExternal(xorstr_("MaterialSystem.dll"), sCrIface.crypt_get()));
 		pFileSystemFactory = (CreateInterfaceFn)(WaitForExternal(xorstr_("FileSystem_Stdio.dll"), sCrIface.crypt_get()));
-		//pSteamAPIFactory = (SteamCreateInterfaceFn)(WaitForExternal(xorstr_("steamapi.dll"), xorstr_("SteamInternal_CreateInterface")));
 	}
 	
 	g_pClient = (IBaseClientDLL *)(WaitForInterface(pClientFactory, xorstr_(CLIENT_DLL_INTERFACE_VERSION)));
@@ -202,12 +200,12 @@ void NSInterfaces::InitInterfaces()
 	//now load steamclient and init it
 
 	typedef ISteamClient *(__cdecl * GetSteamClientFn)();
-
 	WAIT_FOR_SIMPLE_INIT(((GetSteamClientFn)e8call(NSUtils::Sigscan(xorstr_("engine.dll"), xorstr_("\x55\x8B\xEC\x83\xEC\x30\x8D\x4D\xF8\x56\x8B\x75\x08\x56\xE8\x2A\x2A\x2A\x2A\x80\x3D\x2A\x2A\x2A\x2A\x00\x0F\x85\x2A\x2A\x2A\x2A\xC6\x05\x2A\x2A\x2A\x2A\x01\xE8"), 40) + 40))(), g_pSteamClient);
 	g_pSteamFriends = (ISteamFriends *)WaitForObjectAllocationAndInitialization((void **)((char *)g_pSteamClient + 8), true);
-	//FIXME: Does ISteamClient actually has other interface name? Also we can get this from steamclient createinterface ala pSteamClientFactory("SteamClient017", nullptr);
-	//g_pSteamClient = (ISteamClient *)NSUtils::CVirtualMemberTableMan::FindInterfaceThisPointer((void ***)g_pSteamClient, xorstr_("ISteamClient"));
 	g_pSteamClient = nullptr;
+	WAIT_FOR_SIMPLE_INIT((ISteamClient *)LI_FN(SteamInternal_CreateInterface).in(LI_MODULE("steam_api.dll").cached())(xorstr_(STEAMCLIENT_INTERFACE_VERSION)), g_pSteamClient);
+	HSteamUser hUser = LI_FN(SteamAPI_GetHSteamUser).in(LI_MODULE("steam_api.dll").cached())();
+	WAIT_FOR_SIMPLE_INIT((ISteamUser *)LI_FN(SteamInternal_FindOrCreateUserInterface).in(LI_MODULE("steam_api.dll").cached())(hUser, xorstr_(STEAMUSER_INTERFACE_VERSION)), g_pSteamUser);
 
 	//also init some globals here
 	//load saved data
@@ -238,6 +236,7 @@ CUserMessages * NSInterfaces::g_pUserMessages = nullptr;
 IViewPort * NSInterfaces::g_pViewPortInterface = nullptr;
 ISteamClient * NSInterfaces::g_pSteamClient = nullptr;
 ISteamFriends * NSInterfaces::g_pSteamFriends = nullptr;
+ISteamUser * NSInterfaces::g_pSteamUser = nullptr;
 SurfaceV30::ISurfaceFixed * NSInterfaces::g_pSurface = nullptr;
 IMaterialSystemFixed * NSInterfaces::g_pMaterialSystemFixed = nullptr;
 IVRenderView * NSInterfaces::g_pRenderView = nullptr;

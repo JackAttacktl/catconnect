@@ -63,6 +63,7 @@ private:
 	static bool OnFakeAuthTimer(NSUtils::ITimer * pTimer, void * pData);
 	static bool OnVoteTimer(NSUtils::ITimer * pTimer, void * pData);
 	static bool OnBackVoteTimer(NSUtils::ITimer * pTimer, void * pData);
+	static bool OnQueueCheck(NSUtils::ITimer * pTimer, void * pData);
 	static void FASTERCALL SendCatMessage(int iMessage);
 	static uint8_t FASTERCALL GetSavedState(int iIndex);
 	static bool FASTERCALL InSameParty(int iIndex);
@@ -87,6 +88,7 @@ private:
 	static NSUtils::ITimer * ms_pVotingBackTimer;
 	static bool ms_bIsVotingBack;
 	static bool ms_bIsDrawingPostScreenSpaceEffects;
+	static bool ms_bVoteStartedAgainstMe;
 };
 
 class CCatConnectExpose : public ICatConnect
