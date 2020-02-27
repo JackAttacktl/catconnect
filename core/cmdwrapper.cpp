@@ -1,8 +1,9 @@
 #include "cmdwrapper.h"
 #include "xorstr.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm/find_if.hpp>
 
-void NSCore::CCmdWrapper::RegisterCmd(const char * pCmd, CmdCallbackFn pCallback)
+void NSCore::CCmdWrapper::RegisterCmd(NSCore::CCatCommandSafe * pCmd, NSCore::CmdCallbackFn pCallback)
 {
 	//This is important!
 	//We must NOT use ICvar interface to register commands because this is one of potential detection vectors for stupid server-sided anticheats like smac
@@ -11,7 +12,7 @@ void NSCore::CCmdWrapper::RegisterCmd(const char * pCmd, CmdCallbackFn pCallback
 	GetCmdsMap()[pCmd] = pCallback;
 }
 
-void NSCore::CCmdWrapper::UnregisterCmd(const char * pCmd)
+void NSCore::CCmdWrapper::UnregisterCmd(NSCore::CCatCommandSafe * pCmd)
 {
 	if (!IsCommandAlreadyExists(pCmd))
 		return;
@@ -27,5 +28,22 @@ bool NSCore::CCmdWrapper::OnStringCommand(const char * pCmdLine)
 	cCmd.Tokenize(sLine.c_str());
 	if (!IsCommandAlreadyExists(cCmd.Arg(0)))
 		return false;
-	return (GetCmdsMap()[cCmd.Arg(0)](cCmd));
+	const CCatCommandSafe * pCmd = FindCmdByName(cCmd.Arg(0));
+	return (GetCmdsMap()[pCmd](cCmd));
+}
+
+const NSCore::CCatCommandSafe * NSCore::CCmdWrapper::FindCmdByName(const char * pName)
+{
+	auto& mMap = GetCmdsMap();
+	auto iIter = std::find_if(mMap.begin(), mMap.end(), [&pName](const std::pair<const CCatCommandSafe *, CmdCallbackFn> pElem) -> bool { return !strcmp(pElem.first->GetMyName(), pName); });
+	if (iIter != mMap.end())
+		return iIter->first;
+	return nullptr;
+}
+
+bool NSCore::CCmdWrapper::IsCommandAlreadyExists(NSCore::CCatCommandSafe * pCmd)
+{
+	auto& mMap = GetCmdsMap();
+	auto iIter = std::find_if(mMap.begin(), mMap.end(), [&pCmd](const std::pair<const CCatCommandSafe *, CmdCallbackFn> pElem) -> bool { return pElem.first == pCmd; });
+	return iIter != mMap.end();
 }

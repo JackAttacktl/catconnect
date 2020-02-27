@@ -10,11 +10,11 @@
 
 #pragma warning (disable : 4996)
 
-NSCore::CCatCommandSafe settingset(xorstr_("ccat_set"), [](const CCommand & rCmd)
+NSCore::CCatCommandSafe settingset(xorstr_("ccat_set"), CCMD_FLAG_NONE, xorstr_("Set CC setting value"), [](const CCommand & rCmd)
 {
 	if (rCmd.ArgC() < 3)
 	{
-		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "Usage: ccatsettingset <setting> <value>"));
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "Usage: ccat_set <setting> <value>"));
 		return true;
 	}
 
@@ -35,11 +35,11 @@ NSCore::CCatCommandSafe settingset(xorstr_("ccat_set"), [](const CCommand & rCmd
 	return true;
 });
 
-NSCore::CCatCommandSafe settingget(xorstr_("ccat_get"), [](const CCommand& rCmd)
+NSCore::CCatCommandSafe settingget(xorstr_("ccat_get"), CCMD_FLAG_NONE, xorstr_("Get CC setting value"), [](const CCommand& rCmd)
 {
 	if (rCmd.ArgC() < 2)
 	{
-		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "Usage: ccatsettingget <setting>"));
+		NSUtils::PrintToClientConsole(Color(255, 0, 0, 255), xorstr_(MSG_PREFIX "Usage: ccat_get <setting>"));
 		return true;
 	}
 
@@ -59,7 +59,7 @@ NSCore::CCatCommandSafe settingget(xorstr_("ccat_get"), [](const CCommand& rCmd)
 	return true;
 });
 
-NSCore::CCatCommandSafe settingslist(xorstr_("ccat_list"), [](const CCommand& rCmd)
+NSCore::CCatCommandSafe settingslist(xorstr_("ccat_list"), CCMD_FLAG_NONE, xorstr_("Shows all catconnect settings"), [](const CCommand& rCmd)
 {
 	unsigned int iCountOfSettings = NSCore::CSettingsCollector::GetCountOfSettings();
 

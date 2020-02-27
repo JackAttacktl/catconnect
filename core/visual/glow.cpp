@@ -345,34 +345,34 @@ void NSCore::CGlowEffect::RenderGlow(IClientNetworkable * pEnt)
 
 void NSCore::CGlowEffect::DrawEntity(IClientNetworkable * pEnt)
 {
-    static IClientEntity * pAttach;
-    static int iPasses;
-    iPasses = 0;
+    static IClientEntity * s_pAttach;
+    static int s_iPasses;
+    s_iPasses = 0;
 
     IClientEntity * pClEnt = pEnt->GetIClientUnknown()->GetIClientEntity();
     pClEnt->DrawModel(1);
     static unsigned int s_iCollisionOffset = 0;
     if (!s_iCollisionOffset)
         s_iCollisionOffset = NETVARS_GET_OFFSET(xorstr_("DT_BaseEntity"), xorstr_("m_Collision"));
-    pAttach = NSInterfaces::g_pClientEntityList->GetClientEntity(*(int *)((char *)pClEnt + s_iCollisionOffset - 24) & 0xFFF);
-    while (pAttach && iPasses++ < 32)
+    s_pAttach = NSInterfaces::g_pClientEntityList->GetClientEntity(*(int *)((char *)pClEnt + s_iCollisionOffset - 24) & 0xFFF);
+    while (s_pAttach && s_iPasses++ < 32)
     {
-        if (pAttach->ShouldDraw())
+        if (s_pAttach->ShouldDraw())
         {
-            if (((NSReclass::CBaseCombatWeapon *)pAttach)->IsBaseCombatWeapon())
+            if (((NSReclass::CBaseCombatWeapon *)s_pAttach)->IsBaseCombatWeapon())
             {
                 float flTemp[4], flWhite[4] = { 255.0, 255.0, 255.0, 255.0 };
                 NSInterfaces::g_pRenderView->GetColorModulation(flTemp);
                 NSInterfaces::g_pRenderView->SetColorModulation(flWhite);
-                pAttach->DrawModel(1);
+                s_pAttach->DrawModel(1);
                 NSInterfaces::g_pRenderView->SetColorModulation(flTemp);
             }
             else
             {
-                pAttach->DrawModel(1);
+                s_pAttach->DrawModel(1);
             }
         }
-        pAttach = NSInterfaces::g_pClientEntityList->GetClientEntity(*(int *)((char *)pAttach + s_iCollisionOffset - 20) & 0xFFF);
+        s_pAttach = NSInterfaces::g_pClientEntityList->GetClientEntity(*(int *)((char *)s_pAttach + s_iCollisionOffset - 20) & 0xFFF);
     }
 }
 

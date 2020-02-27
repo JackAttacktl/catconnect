@@ -314,7 +314,7 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 
 		if (sMsg.Killer.szName[0])
 		{
-			if (remove_newlines.GetBool())
+			if (remove_newlines.GetBool()) //doing it here should not cause any problems
 			{
 				std::string sName = sMsg.Killer.szName;
 				RemoveUnprintable(sName);
@@ -328,7 +328,7 @@ void CCatConnect::OnDeathNoticePaintPre(void * pThis)
 
 		if (sMsg.Victim.szName[0])
 		{
-			if (remove_newlines.GetBool())
+			if (remove_newlines.GetBool()) //doing it here should not cause any problems
 			{
 				std::string sName = sMsg.Victim.szName;
 				RemoveUnprintable(sName);
@@ -1087,7 +1087,7 @@ void CCatConnect::RemoveUnprintable(std::string & sStr)
 	boost::erase_all(sStr, xorstr_("\x1B")); //ESC character
 }
 
-NSCore::CCatCommandSafe getcommandslist(xorstr_("ccat_cmdlist"), [](const CCommand& rCmd)
+NSCore::CCatCommandSafe getcommandslist(xorstr_("ccat_cmdlist"), CCMD_FLAG_NONE, xorstr_("Shows all catconnect commands"), [](const CCommand& rCmd)
 {
 	uint32_t iCount = NSCore::CCmdWrapper::GetCommandsCount();
 	if (iCount <= 1)
@@ -1100,14 +1100,16 @@ NSCore::CCatCommandSafe getcommandslist(xorstr_("ccat_cmdlist"), [](const CComma
 
 	for (uint32_t iCmd = 0; iCmd < iCount; iCmd++)
 	{
-		std::string sName = NSCore::CCmdWrapper::GetCommandNameByNumber(iCmd);
-		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Command \"%s\" - No description."), sName.c_str()); //TODO: Add commands description!
+		auto * pCmd = NSCore::CCmdWrapper::GetCommandByNumber(iCmd);
+		if (pCmd->GetMyFlags() & (CCMD_FLAG_HOOK | CCMD_FLAG_HIDDEN))
+			continue;
+		NSUtils::PrintToClientConsole(Color(0, 255, 0, 255), xorstr_("Command \"%s\" - \"%s\"."), pCmd->GetMyName(), pCmd->GetMyDescription());
 	}
 
 	return true;
 });
 
-NSCore::CCatCommandSafe votehook(xorstr_("callvote"), [](const CCommand & rCmd)
+NSCore::CCatCommandSafe votehook(xorstr_("callvote"), CCMD_FLAG_HOOK, [](const CCommand & rCmd)
 {
 	if (!votekicks_manage.GetBool())
 		return false;
@@ -1136,7 +1138,7 @@ NSCore::CCatCommandSafe votehook(xorstr_("callvote"), [](const CCommand & rCmd)
 	return false;
 });
 
-NSCore::CCatCommandSafe voteopthook(xorstr_("vote"), [](const CCommand & rCmd)
+NSCore::CCatCommandSafe voteopthook(xorstr_("vote"), CCMD_FLAG_HOOK, [](const CCommand & rCmd)
 {
 	if (rCmd.ArgC() < 2)
 		return false;
