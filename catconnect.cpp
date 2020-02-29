@@ -386,6 +386,7 @@ void CCatConnect::OnMapEnd()
 	SetVoteState();
 	ms_bIsVotingBack = false;
 	ms_pVotingBackTimer->ResetTime(2.0);
+	ms_iVoteStartedAgainstMe = -1;
 }
 
 bool CCatConnect::OnClientCommand(const char * pCmdLine) { return NSCore::CCmdWrapper::OnStringCommand(pCmdLine); }
@@ -415,7 +416,7 @@ void CCatConnect::CreateMove(float flInputSample, CUserCmd * pCmd)
 
 void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget, const char * pReason)
 {
-	ms_bVoteStartedAgainstMe = false;
+	ms_iVoteStartedAgainstMe = 0;
 
 	if (!votekicks_manage.GetBool())
 		return;
@@ -648,7 +649,7 @@ void CCatConnect::OnPotentialVoteKickStarted(int iTeam, int iCaller, int iTarget
 		pTimer->SetCallback(&CCatConnect::OnVoteTimer);
 		SetVoteState(2);
 		if (ShouldMarkAsVoteBack(eCallerState)) MarkAsToVoteBack(sInfoCaller.friendsID);
-		ms_bVoteStartedAgainstMe = true;
+		ms_iVoteStartedAgainstMe = 1;
 	}
 
 	if (!*pVoteOption)
@@ -966,7 +967,7 @@ void CCatConnect::CVoteListener::FireGameEvent(IGameEvent * pEvent)
 	}
 	else if (!strcmp(pEvent->GetName(), xorstr_("vote_changed")))
 	{
-		if (!votekicks_autoleave.GetBool() || !ms_bVoteStartedAgainstMe)
+		if (!votekicks_autoleave.GetBool() || ms_iVoteStartedAgainstMe != 1)
 			return;
 
 		if (!NSInterfaces::g_pEngineClient->IsInGame() || NSInterfaces::g_pEngineClient->IsPlayingDemo())
@@ -1305,4 +1306,4 @@ unsigned int CCatConnect::ms_iCurrentVoteChoice = 0;
 NSUtils::ITimer * CCatConnect::ms_pVotingBackTimer = nullptr;
 bool CCatConnect::ms_bIsVotingBack = false;
 bool CCatConnect::ms_bIsDrawingPostScreenSpaceEffects = false;
-bool CCatConnect::ms_bVoteStartedAgainstMe = false;
+int CCatConnect::ms_iVoteStartedAgainstMe = -1;

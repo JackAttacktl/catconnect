@@ -33,7 +33,7 @@ public:
 	static void FASTERCALL OnDeathNoticePaintPre(void * pThis);
 	static inline void OnDoPostScreenSpaceEffects(bool bStart) { ms_bIsDrawingPostScreenSpaceEffects = bStart; }
 	static bool FASTERCALL OnPlayingDemoCheck(bool &bResult); //this hook used to prevent CGlowObjectManager from drawing outlines
-	static inline void SetVoteState(unsigned int iValue = 0) { ms_iCurrentVoteChoice = iValue; }
+	static inline void SetVoteState(unsigned int iValue = 0) { ms_iCurrentVoteChoice = iValue; if (!iValue) ms_iVoteStartedAgainstMe = -1; }
 	static bool FASTERCALL IsVotingBack(int iReason, int iSeconds);
 	static Color FASTERCALL GetStateColor(ECatState, int iTeam);
 
@@ -88,7 +88,7 @@ private:
 	static NSUtils::ITimer * ms_pVotingBackTimer;
 	static bool ms_bIsVotingBack;
 	static bool ms_bIsDrawingPostScreenSpaceEffects;
-	static bool ms_bVoteStartedAgainstMe;
+	static int ms_iVoteStartedAgainstMe;
 };
 
 class CCatConnectExpose : public ICatConnect
