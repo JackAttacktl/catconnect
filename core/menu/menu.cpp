@@ -13,7 +13,7 @@
 #include "settings/settings.h"
 #include "inputsystem/iinputsystem.h"
 
-NSMenu::CMenu::CMenu() : m_bEnabled(false), m_bIsOnDrag(false), m_pMouse{ 0, 0 }, m_pPrevMouse{ 0, 0 }, m_pMyPosition{ 100, 100 }, m_pMyScale{ 208, 600 }, m_EMouseButton(EMouseButton::MB_None), m_iKey(BUTTON_CODE_NONE)
+NSMenu::CMenu::CMenu() : m_bEnabled(false), m_bIsOnDrag(false), m_pMouse{ 0, 0 }, m_pPrevMouse{ 0, 0 }, m_pMyPosition{ 100, 100 }, m_pMyScale{ 208, 700 }, m_EMouseButton(EMouseButton::MB_None), m_iKey(BUTTON_CODE_NONE)
 {
 	m_pMyStyle = new CDefaultStyle();
 	m_pTabs = new CTabGroup(this);
@@ -47,7 +47,10 @@ void NSMenu::CMenu::CreateGUI()
 			new CGroupBox(this, xorstr_("Votekicks"),
 				{
 					new CListBox(this, xorstr_("Manage votekicks"), xorstr_("catconnect.votekicks.manage"), { xorstr_("Don't manage"), xorstr_("Vote only"), xorstr_("Vote and call votes") }),
-					new CListBox(this, xorstr_("Show voters"), xorstr_("catconnect.votekicks.partychat.notifyvoters"), { xorstr_("Don't show"), xorstr_("All"), xorstr_("Against only") })
+					new CListBox(this, xorstr_("Show voters"), xorstr_("catconnect.votekicks.partychat.notifyvoters"), { xorstr_("Don't show"), xorstr_("All"), xorstr_("Against only") }),
+					new CListBox(this, xorstr_("Auto-leave when"), xorstr_("catconnect.votekicks.autoleave"), { xorstr_("Don't leave"), xorstr_("Always"), xorstr_("Only if in party"), xorstr_("Only if not leader"), xorstr_("Only if leader in-game") }),
+					new CSlider(this, xorstr_("Min votes to leave"), xorstr_("catconnect.votekicks.autoleave.min"), 3, 11, 1),
+					new CCheckBox(this, xorstr_("Auto standby"), xorstr_("catconnect.partyclient.autostandby"))
 				}, GROUP_DEFAULT_WIDTH),
 			new CGroupBox(this, xorstr_("Scoreboard"),
 				{

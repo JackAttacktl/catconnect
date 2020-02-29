@@ -51,13 +51,13 @@ NSCore::CSetting notify_gamechat(xorstr_("catconnect.gamechat.notify.bots"), xor
 NSCore::CSetting notify_saychat(xorstr_("catconnect.chat.notify.bots"), xorstr_("0"));
 NSCore::CSetting votekicks_manage(xorstr_("catconnect.votekicks.manage"), xorstr_("1"));
 NSCore::CSetting votekicks_showvoters(xorstr_("catconnect.votekicks.partychat.notifyvoters"), xorstr_("2"));
-NSCore::CSetting votekicks_autoleave(xorstr_("catconnect.votekicks.autoleave"), xorstr_("0"));
+NSCore::CSetting votekicks_autoleave(xorstr_("catconnect.votekicks.autoleave"), xorstr_("3"));
 NSCore::CSetting votekicks_autoleave_minvotes(xorstr_("catconnect.votekicks.autoleave.min"), xorstr_("4"));
 NSCore::CSetting scoreboard_showcats(xorstr_("catconnect.scoreboard.showcats"), xorstr_("1"));
 NSCore::CSetting scoreboard_showfriends(xorstr_("catconnect.scoreboard.showfriends"), xorstr_("1"));
 NSCore::CSetting deathnotice_changecolors(xorstr_("catconnect.deathnotice.changecolors"), xorstr_("1"));
 NSCore::CSetting glow_suppresstfglow(xorstr_("catconnect.glow.suppress.stocks"), xorstr_("1"));
-NSCore::CSetting partyclient_autostanby(xorstr_("catconnect.partyclient.autostandby"), xorstr_("0"));
+NSCore::CSetting partyclient_autostanby(xorstr_("catconnect.partyclient.autostandby"), xorstr_("1"));
 NSCore::CSetting debug_show(xorstr_("catconnect.showdebug"), xorstr_("0"));
 extern NSCore::CSetting remove_newlines;
 
@@ -974,7 +974,11 @@ void CCatConnect::CVoteListener::FireGameEvent(IGameEvent * pEvent)
 
 		int iYesCount = pEvent->GetInt(xorstr_("vote_option1"));
 		int iNoCount = pEvent->GetInt(xorstr_("vote_option2"));
+
 		if (votekicks_autoleave_minvotes.GetInt() > iYesCount + iNoCount)
+			return;
+
+		if (iYesCount <= iNoCount)
 			return;
 
 		auto * pClientSystem = NSReclass::CTFGCClientSystem::GTFGCClientSystem();

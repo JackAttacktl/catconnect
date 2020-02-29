@@ -220,7 +220,7 @@ namespace NSReclass
             return BInvitePlayerToPartyFn(this, sSteamID, bUnknown);
         }
 
-        FORCEINLINE int BRequestJoinPlayer(CSteamID sSteamID, bool bUnknown = false)
+        FORCEINLINE int BRequestJoinPlayer(CSteamID sSteamID, bool bExceptInvite = false)
         {
             typedef int (__thiscall * BRequestJoinPlayer_t)(CTFPartyClient *, CSteamID, bool);
             static BRequestJoinPlayer_t BRequestJoinPlayerFn = nullptr;
@@ -229,7 +229,7 @@ namespace NSReclass
                 void * pAddr = (void *)NSUtils::Sigscan(xorstr_("client.dll"), xorstr_("\x55\x8B\xEC\x83\xEC\x14\x56\xFF\x75\x0C"), 10);
                 BRequestJoinPlayerFn = BRequestJoinPlayer_t(pAddr);
             }
-            return BRequestJoinPlayerFn(this, sSteamID, bUnknown);
+            return BRequestJoinPlayerFn(this, sSteamID, bExceptInvite);
         }
 
         //aka PromotePlayerToLeader in cathook
